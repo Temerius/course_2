@@ -7,7 +7,7 @@ section '.data' data readable writeable
   DISKPages_count dw 8 ; variable for diskpages count
   Process_count dw 8 ; variable for start process count 
   Process_size dd ? ; variable for the size off the process array
-
+  Real_process_size dd ?
   
   processes dd ? ; address of the process array
 
@@ -40,7 +40,7 @@ section '.data' data readable writeable
   timer dd 0
 
   TIME_FOR_NEW_PROCESS=20000
-  TIME_FOR_NEXT_STAGE=60
+  TIME_FOR_NEXT_STAGE=6000
   TIME_FOR_BEREADY=25000
   TIME_FOR_REFRESH=4000
 
@@ -77,37 +77,78 @@ proc initialisation, a:DWORD
 
 
     shl eax,1 ;expand array size x2
+
+    mov dword [Real_process_size],eax
     mov ebx,eax
     invoke HeapAlloc, [a],0,ebx
     mov dword [processes],eax
 
     mov edi,0 ; offset in process array
-    mov dx,word [current_name]
+
 
     ; filling the array of processes
     ini_loopstart:
-        mov word [processes+edi],dx
-        mov word [processes+edi+number_in_CPU_offset], -1
-        mov word [processes+edi+cells_count_offset],4
-        mov word [processes+edi+hung_stage_offset],1
-        mov word [processes+edi+downtime_offset],0
-        mov word [processes+edi+uptime_offset],0
-        mov word [processes+edi+finaltime_offset],0
-        mov word [processes+edi+need_IO_offset],0
-        mov word [processes+edi+downtime_tick_offset],0
-        mov word [processes+edi+uptime_tick_offset],0
-        mov word [processes+edi+executed_offset],0
+        stdcall addprocess
         add edi,process_offset
-        inc edx
         cmp edi,dword [Process_size]
         jne ini_loopstart
+ret
+endp
+
+proc addprocess
+    mov dx,word[current_name]
+    mov word [processes+edi],dx
+    mov word [processes+edi+number_in_CPU_offset], -1
+    mov word [processes+edi+cells_count_offset],4
+    mov word [processes+edi+hung_stage_offset],1
+    mov word [processes+edi+downtime_offset],0
+    mov word [processes+edi+uptime_offset],0
+    mov word [processes+edi+finaltime_offset],0
+    mov word [processes+edi+need_IO_offset],0
+    mov word [processes+edi+downtime_tick_offset],0
+    mov word [processes+edi+uptime_tick_offset],0
+    mov word [processes+edi+executed_offset],0
+    inc dx
     mov word [current_name],dx
 ret
 endp
+proc newprocess
+    mov edi,0 ; offset in process array 
+    .start_loop:
+        cmp word [processes+edi],-1
+        jne continue
+            stdcall addprocess
+            jmp func_end
+        .continue
+
+        add edi,process_offset
+        cmp edi,dword [Process_size]
+        jne start_loop
+    
+    mov eax,dword[Process_size]
+    cmp eax,dword[Real_process_size]
+    jb newprocinplace
+    
+    .newprocinplace
+    stdcall addprocess
+    add dword [Process_size],process_offset
+.func_end
+ret
+endp
+
 
 proc timeupdate
     mov edi,0 ; offset in process array
     invoke GetTickCount
+    push eax
+    sub eax,dword [timer]
+    cmp eax,TIME_FOR_NEW_PROCESS
+    jb time_loopstart
+    
+    ; call create new process
+    pop eax
+    mov dword[timer],eax
+    
     time_loopstart:
         cmp word [processes+edi+executed_offset],0
         jne executed_label
