@@ -36,8 +36,11 @@ section '.data' data readable writeable
   process_on_RAM_offset = 1
 
 
-  current_name dw 0
-  timer dd 0
+  current_name dw 0 ; curent name of process index
+  Reset_count db 0 ; current count for reset
+  GAMEOVER=10 ; count for reset
+  timer dd 0 ; current tick count
+  myheap dd 0 ;
 
   TIME_FOR_NEW_PROCESS=20000
   TIME_FOR_NEXT_STAGE=6000
@@ -50,27 +53,55 @@ section '.data' data readable writeable
 
 section '.text' code readable executable
   include 'win32a.inc'
+  include './MACRO/IF.INC'
 proc start
-  invoke GetProcessHeap
 
-  stdcall initialisation,eax
-  mov ecx,36000
+    mov eax,2
+    mov ebx,4
+    .if eax < ebx
+        mov ecx,eax 
+        .else
+        mov ecx,ebx
+    .endif
 
-  time_loop:
 
-    stdcall timeupdate
-    dec ecx
-    cmp ecx,0
-    jne time_loop
-  invoke ExitProcess, 0
-  ret
+    invoke GetProcessHeap 
+    mov [myheap],eax
+    stdcall initialisation,eax
+
+    ; timer start
+    invoke GetTickCount
+    mov dword[timer],eax
+    ;
+
+    ; main loop
+    mov ecx,36000
+    time_loop:
+
+        stdcall timeupdate
+        dec ecx
+        cmp ecx,0
+        jne time_loop
+
+    
+    invoke ExitProcess, 0
+    ret
 endp
 
+proc realloc
+    mov eax,dword [Real_process_size]
+    shl eax,1
+    mov dword[Real_process_size],eax
+    invoke HeapReAlloc, [myheap], 0, [processes], eax
+    mov dword[processes],eax
+ret
+endp
 proc initialisation, a:DWORD
-
+    ; process array size
     mov ax,word [Process_count]
     mov bx,process_offset
     imul ax,bx
+    ;
 
     movzx eax,ax
     mov dword [Process_size],eax
@@ -84,7 +115,6 @@ proc initialisation, a:DWORD
     mov dword [processes],eax
 
     mov edi,0 ; offset in process array
-
 
     ; filling the array of processes
     ini_loopstart:
@@ -110,13 +140,16 @@ proc addprocess
     mov word [processes+edi+executed_offset],0
     inc dx
     mov word [current_name],dx
-ret
+    ret
 endp
 proc newprocess
     mov edi,0 ; offset in process array 
+
+    ; find process with name -1 to replace it with a new process
     .start_loop:
+
         cmp word [processes+edi],-1
-        jne continue
+        je continue
             stdcall addprocess
             jmp func_end
         .continue
@@ -125,9 +158,12 @@ proc newprocess
         cmp edi,dword [Process_size]
         jne start_loop
     
+    ; compare real size with doubled size
     mov eax,dword[Process_size]
     cmp eax,dword[Real_process_size]
     jb newprocinplace
+        ; increase size
+        stdcall realloc
     
     .newprocinplace
     stdcall addprocess
@@ -138,18 +174,20 @@ endp
 
 
 proc timeupdate
-    mov edi,0 ; offset in process array
     invoke GetTickCount
     push eax
     sub eax,dword [timer]
     cmp eax,TIME_FOR_NEW_PROCESS
-    jb time_loopstart
+    jb loop_prepare
     
-    ; call create new process
+        ; call create new process
+    
+    
+    loop_prepare:
     pop eax
-    mov dword[timer],eax
-    
+    mov edi,0 ; offset in process array
     time_loopstart:
+    
         cmp word [processes+edi+executed_offset],0
         jne executed_label
 
@@ -162,18 +200,23 @@ proc timeupdate
                         push eax
                         sub eax,dword [processes+edi+downtime_tick_offset]
                         add word [processes+edi+downtime_offset],ax
+                        pop eax
                         cmp word [processes+edi+downtime_offset],TIME_FOR_NEXT_STAGE
-                        jbe not_new_stage_label
+                        jbe new_downtime_update_label
                         
                             new_stage_label:
                                 add word [processes+edi+hung_stage_offset],1
-                                and bx,0
-                                mov bx,word [processes+edi+hung_stage_offset]
+                                cmp word [processes+edi+hung_stage_offset],7
+                                jb notgg
+                                    ; call delete process
+                                    inc [Reset_count]
+                                    cmp [Reset_count],GAMEOVER
+                                    ;;;;;;;;;;;;;;;;;
+                                notgg:                              
+                                and bx,0 ;;;;;;;;;;;
+                                mov bx,word [processes+edi+hung_stage_offset];;;;;;for dbg
                                 mov word [processes+edi+downtime_offset],0
 
-                            not_new_stage_label:
-                                pop eax
-                                jmp new_downtime_update_label
 
                 new_downtime_update_label:
                     mov dword [processes+edi+downtime_tick_offset],eax
