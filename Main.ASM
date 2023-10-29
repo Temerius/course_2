@@ -203,6 +203,13 @@ proc timeupdate
                     add word [esi+edi+uptime_offset],ax
                     add word [esi+edi+finaltime_offset],ax
                     pop eax
+                    .if word [esi+edi+uptime_offset] >= TIME_FOR_REFRESH
+                        mov word [esi+edi+hung_stage_offset],1
+                        mov word [esi+edi+uptime_offset],0
+                    .endif
+                    .if word [esi+edi+finaltime_offset] >= TIME_FOR_BEREADY
+                        stdcall deleteprocess
+                    .endif
                 .endif
                 mov dword [esi+edi+uptime_tick_offset],eax
             .else 
