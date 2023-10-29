@@ -28,6 +28,9 @@ section '.data' data readable writeable
 
 
 
+    tmp_offset = 2 ;;;;;;;;;;;;;
+
+
     CPU dd ?
     CPU_size dd ?
     process_on_CPU_offset = 2
@@ -63,14 +66,6 @@ section '.text' code readable executable
   include './MACRO/IF.INC'
 proc start
 
-    mov eax,2
-    mov ebx,4
-    .if eax < ebx
-        mov ecx,eax 
-        .else
-        mov ecx,ebx
-    .endif
-
 
     invoke GetProcessHeap 
     mov dword[myheap],eax
@@ -84,11 +79,14 @@ proc start
     ;
 
     ; main loop
+    mov ecx,0
     time_loop:
 
         stdcall timeupdate
-
+        stdcall CPUpush,ecx
         jmp time_loop
+
+    
     ret
 endp
 
@@ -100,7 +98,7 @@ proc realloc
     mov dword[processes],eax
 ret
 endp
-proc initialisation, a:DWORD
+proc initialisation, a: DWORD
     ; process array size
     mov ax, word [Process_count]
     mov bx, process_offset
@@ -342,7 +340,131 @@ proc timeupdate
 ret
 endp
 
+proc GetEdi, name: dword, offset: dword
+    mov eax, dword [name]
+    mov ebx, [offset]
+    imul eax,ebx
+    mov edi,eax
+    ret
+endp
 
+proc deletefromdiskram, index: dword, offset: dword, arr: dword
+    stdcall GetEdi,[index],[offset]
+    mov esi, dword[arr]
+    mov dword [esi+edi+tmp_offset],-1
+ret
+endp
+
+proc diskrampush, process_topush: dword , comparator1: dword, comparator2: dword
+    locals
+        arr1 dd ?
+        size1 dd ?
+        offset1 dd ?
+        arr2 dd ?
+        offset2 dd ?
+    endl
+
+    .if [comparator2] = 1
+        mov eax,[RAM]
+        mov [arr1],eax
+        mov eax,[RAM_size]
+        mov [size1],eax
+        mov [offset1],RAM_offset
+        mov eax,[DISK]
+        mov [arr2],eax
+        mov [offset2],DISK_offset
+    .else
+        mov eax,[RAM]
+        mov [arr2],eax
+        mov [offset2],RAM_offset
+        mov eax,[DISK]
+        mov [arr1],eax
+        mov eax,[DISK_size]
+        mov [size1],eax
+        mov [offset1],DISK_offset
+    .endif
+
+    mov esi, dword[arr1]
+    mov edi, 0
+    mov ecx, [process_topush]
+    .loopstart:
+        .if dword[esi+edi+tmp_offset] = -1
+            mov dword[esi+edi+tmp_offset],ecx
+        .else
+            add edi,[offset1]
+            cmp edi, dword [size1]
+            jne .loopstart
+        .endif
+
+        .if edi = dword [size1]
+            mov eax,-1
+        .else 
+            .if [comparator1] <> -1
+                stdcall deletefromdiskram,[comparator1],[offset2],[arr2]
+            .endif
+            mov eax,0
+        .endif
+
+    ret
+endp
+
+proc RAMpush_process, process_topush: dword
+    locals
+        count dw ?
+        currentcount dw 0
+    endl
+    mov ax, word[esi+edi+cells_count_offset]
+    mov [count],ax
+    mov cx, word[count]
+    .loopstart:
+
+        stdcall diskrampush, [process_topush],0,1
+        .if eax = -1
+            stdcall diskrampush, [process_topush],0,2
+        .endif
+        inc [currentcount]
+        cmp [currentcount],cx
+        jb .loopstart
+    ret
+endp
+proc CPUpush, process_topush: dword
+
+    stdcall GetEdi, [process_topush],process_offset
+    mov esi, dword[processes]
+    .if word[esi+edi+number_in_CPU_offset] = -1
+        push esi
+        push edi
+        mov esi, dword[CPU]
+        mov edi, 0
+        .start_loop:
+            .if word[esi+edi+process_on_CPU_offset] <> -1
+                add edi,CPU_offset
+                .if edi < dword[CPU_size]
+                    jmp .start_loop
+                .endif
+            .endif
+        .if edi < dword[CPU_size]
+            mov eax,[process_topush]
+            mov word[esi+edi+process_on_CPU_offset],ax
+            mov ax , word[esi+edi]
+            pop edi
+            pop esi
+            mov word[esi+edi+process_on_CPU_offset],ax
+            .if word[esi+edi+was_on_CPU_offset] = 0
+                stdcall RAMpush_process,[process_topush]
+                mov word[esi+edi+was_on_CPU_offset],1
+            .endif  
+        .else
+            mov eax,-1
+            pop edi
+            pop esi 
+        .endif
+    .else 
+        mov eax,-2
+    .endif
+
+    ret
+endp
 
 section '.idata' import data readable writeable
   library kernel32, 'KERNEL32.DLL',\
