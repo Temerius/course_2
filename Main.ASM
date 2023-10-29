@@ -427,6 +427,8 @@ proc RAMpush_process, process_topush: dword
         jb .loopstart
     ret
 endp
+
+
 proc CPUpush, process_topush: dword
 
     stdcall GetEdi, [process_topush],process_offset
@@ -464,6 +466,18 @@ proc CPUpush, process_topush: dword
     .endif
 
     ret
+endp
+
+proc CPUpop, process_topop: dword
+    stdcall GetEdi, [process_topop],CPU_offset
+    mov esi,dword [CPU]
+    mov cx,word[esi+edi+process_on_CPU_offset]
+    mov word[esi+edi+process_on_CPU_offset],-1
+    movzx ecx,cx
+    stdcall GetEdi, ecx,process_offset
+    mov esi,dword[processes]
+    mov word[esi+edi+number_in_CPU_offset],-1
+ret
 endp
 
 section '.idata' import data readable writeable
