@@ -2,50 +2,57 @@ format PE GUI 4.0
 entry start
 
 section '.data' data readable writeable
-  CPU_count dw 4  ; variable for cpu count 
-  RAMPages_count dw 16 ; variable for rampages count
-  DISKPages_count dw 8 ; variable for diskpages count
-  Process_count dw 8 ; variable for start process count 
-  Process_size dd ? ; variable for the size off the process array
-  Real_process_size dd ?
-  
-  processes dd ? ; address of the process array
+    CPU_count dw 4  ; variable for cpu count 
+    RAMPages_count dw 32 ; variable for rampages count
+    DISKPages_count dw 16 ; variable for diskpages count
+    Process_count dw 8 ; variable for start process count 
+    Process_size dd ? ; variable for the size off the process array
+    Real_process_size dd ?
 
-  ; variables for process array offset  
-  number_in_CPU_offset = 2
-  cells_count_offset = 4
-  hung_stage_offset = 6
-  downtime_offset = 8
-  uptime_offset = 10
-  finaltime_offset = 12
-  need_IO_offset = 14
-  downtime_tick_offset = 16
-  uptime_tick_offset = 20
-  executed_offset = 24
-  process_offset = 26
-  ;
+    processes dd ? ; address of the process array
 
-
-
-  ; CPUs [4]: word
-  process_on_CPU_offset = 1
+    ; variables for process array offset  
+    number_in_CPU_offset = 2
+    cells_count_offset = 4
+    hung_stage_offset = 6
+    downtime_offset = 8
+    uptime_offset = 10
+    finaltime_offset = 12
+    need_IO_offset = 14
+    downtime_tick_offset = 16
+    uptime_tick_offset = 20
+    executed_offset = 24
+    was_on_CPU_offset = 26
+    process_offset = 28
+    ;
 
 
 
-  ; RAMPages [8]: word
-  process_on_RAM_offset = 1
+    CPU dd ?
+    CPU_size dd ?
+    process_on_CPU_offset = 2
+    CPU_offset = 4
 
+    RAM dd ?
+    RAM_size dd ?
+    process_on_RAM_offset = 2
+    RAM_offset = 4
 
-  current_name dw 0 ; curent name of process index
-  Reset_count db 0 ; current count for reset
-  GAMEOVER=10 ; count for reset
-  timer dd 0 ; current tick count
-  myheap dd 0 ;
+    DISK dd ?
+    DISK_size dd ?
+    process_on_DISK_offset = 2
+    DISK_offset = 4
 
-  TIME_FOR_NEW_PROCESS=20000
-  TIME_FOR_NEXT_STAGE=6000
-  TIME_FOR_BEREADY=25000
-  TIME_FOR_REFRESH=4000
+    current_name dw 0 ; curent name of process index
+    Reset_count db 0 ; current count for reset
+    GAMEOVER=10 ; count for reset
+    timer dd 0 ; current tick count
+    myheap dd 0 ;
+
+    TIME_FOR_NEW_PROCESS=20000
+    TIME_FOR_NEXT_STAGE=6000
+    TIME_FOR_BEREADY=25000
+    TIME_FOR_REFRESH=4000
 
 
 
@@ -120,9 +127,97 @@ proc initialisation, a:DWORD
         add edi,process_offset
         cmp edi, dword [Process_size]
         jne ini_loopstart
+
+    ;
+    
+
+
+    ; ini for CPU
+    mov ax, word [CPU_count]
+    mov bx, CPU_offset
+    imul ax,bx
+    movzx eax,ax
+    mov dword [CPU_size],eax
+    mov ebx,eax
+    invoke HeapAlloc, [a],0,ebx
+    mov dword [CPU],eax
+
+    mov edi,0 ; offset in CPU array
+    mov cx,0
+    ; filling the array of CPUs
+    inicpu_loopstart:
+        stdcall addCPU
+        inc cx
+        add edi,CPU_offset
+        cmp edi, dword [CPU_size]
+        jne inicpu_loopstart
+
+
+    ; ini for RAM
+    mov ax, word [RAMPages_count]
+    mov bx, RAM_offset
+    imul ax,bx
+    movzx eax,ax
+    mov dword [RAM_size],eax
+    mov ebx,eax
+    invoke HeapAlloc, [a],0,ebx
+    mov dword [RAM],eax
+
+    mov edi,0 ; offset in RAM array
+    mov cx,0
+    ; filling the array of RAM
+    iniram_loopstart:
+        stdcall addRAM
+        inc cx
+        add edi,RAM_offset
+        cmp edi, dword [RAM_size]
+        jne iniram_loopstart
+
+    ; ini for DISK
+    mov ax, word [DISKPages_count]
+    mov bx, DISK_offset
+    imul ax,bx
+    movzx eax,ax
+    mov dword [DISK_size],eax
+    mov ebx,eax
+    invoke HeapAlloc, [a],0,ebx
+    mov dword [DISK],eax
+
+    mov edi,0 ; offset in DISK array
+    mov cx,0
+    ; filling the array of DISK
+    inidisk_loopstart:
+        stdcall addDISK
+        inc cx
+        add edi,DISK_offset
+        cmp edi, dword [DISK_size]
+        jne inidisk_loopstart
 ret
 endp
 
+proc addCPU
+    mov esi,dword[CPU]
+    mov word [esi+edi],cx
+    mov word [esi+edi+process_on_CPU_offset], -1
+    
+    ret
+endp
+
+proc addRAM
+    mov esi,dword[RAM]
+    mov word [esi+edi],cx
+    mov word [esi+edi+process_on_RAM_offset], -1
+    
+    ret
+endp
+
+proc addDISK
+    mov esi,dword[DISK]
+    mov word [esi+edi],cx
+    mov word [esi+edi+process_on_DISK_offset], -1
+    
+    ret
+endp
 proc addprocess
     mov esi,dword[processes]
     mov dx, word[current_name]
@@ -137,6 +232,7 @@ proc addprocess
     mov dword [esi+edi+downtime_tick_offset],0
     mov dword [esi+edi+uptime_tick_offset],0
     mov word [esi+edi+executed_offset],0
+    mov word [esi+edi+was_on_CPU_offset],0
     inc dx
     mov word [current_name],dx
     ret
