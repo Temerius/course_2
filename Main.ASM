@@ -8,22 +8,24 @@ section '.data' data readable writeable
     Process_count dw 8 ; variable for start process count 
     Process_size dd ? ; variable for the size off the process array
     Real_process_size dd ?
+    Random_probability dw 20
+    Random_delimiter dw 100
 
     processes dd ? ; address of the process array
 
     ; variables for process array offset  
-    number_in_CPU_offset = 2
-    cells_count_offset = 4
-    hung_stage_offset = 6
-    downtime_offset = 8
-    uptime_offset = 10
-    finaltime_offset = 12
-    need_IO_offset = 14
-    downtime_tick_offset = 16
-    uptime_tick_offset = 20
-    executed_offset = 24
-    was_on_CPU_offset = 26
-    process_offset = 28
+    number_in_CPU_offset = 2    ; cpu name
+    cells_count_offset = 4  ; ram sells count
+    hung_stage_offset = 6   ; current hung stage
+    downtime_offset = 8     ; miliseconds from downtime start
+    uptime_offset = 10      ; miliseconds from uptime start
+    finaltime_offset = 12   ; miliseconds from finaltime start
+    need_IO_offset = 14     ; number from 1 to 100 if < Random_probability IO 
+    downtime_tick_offset = 16   ; miliseconds from start system (from func gettickcount)
+    uptime_tick_offset = 20     ; miliseconds from start system (from func gettickcount)   
+    executed_offset = 24    ; flag is process executed
+    was_on_CPU_offset = 26  ; flag was process on cpu (to add new cells on ram or not)
+    process_offset = 28     ; final offset (size of cpu structure)
     ;
 
 
@@ -50,7 +52,7 @@ section '.data' data readable writeable
     Reset_count db 0 ; current count for reset
     GAMEOVER=10 ; count for reset
     timer dd 0 ; current tick count
-    myheap dd 0 ;
+    myheap dd 0 ; heap from getprocessheap
 
     TIME_FOR_NEW_PROCESS=20000
     TIME_FOR_NEXT_STAGE=6000
@@ -64,8 +66,11 @@ section '.data' data readable writeable
 section '.text' code readable executable
   include 'win32a.inc'
   include './MACRO/IF.INC'
+
 proc start
 
+
+ 
 
     invoke GetProcessHeap 
     mov dword[myheap],eax
@@ -80,118 +85,17 @@ proc start
 
     ; main loop
     mov ecx,0
+    stdcall CPUpush,ecx
     time_loop:
 
         stdcall timeupdate
-        stdcall CPUpush,ecx
+        stdcall generateIO
         jmp time_loop
 
-    
     ret
 endp
 
-proc realloc
-    mov eax, dword[Real_process_size]
-    shl eax,1
-    mov dword[Real_process_size],eax
-    invoke HeapReAlloc, dword[myheap], 0, dword[processes], eax
-    mov dword[processes],eax
-ret
-endp
-proc initialisation, a: DWORD
-    ; process array size
-    mov ax, word [Process_count]
-    mov bx, process_offset
-    imul ax,bx
-    ;
-
-    movzx eax,ax
-    mov dword [Process_size],eax
-
-
-    shl eax,1 ;expand array size x2
-
-    mov dword [Real_process_size],eax
-    mov ebx,eax
-    invoke HeapAlloc, [a],0,ebx
-    mov dword [processes],eax
-    mov esi,eax
-
-    mov edi,0 ; offset in process array
-
-    ; filling the array of processes
-    ini_loopstart:
-        stdcall addprocess
-        add edi,process_offset
-        cmp edi, dword [Process_size]
-        jne ini_loopstart
-
-    ;
-    
-
-
-    ; ini for CPU
-    mov ax, word [CPU_count]
-    mov bx, CPU_offset
-    imul ax,bx
-    movzx eax,ax
-    mov dword [CPU_size],eax
-    mov ebx,eax
-    invoke HeapAlloc, [a],0,ebx
-    mov dword [CPU],eax
-
-    mov edi,0 ; offset in CPU array
-    mov cx,0
-    ; filling the array of CPUs
-    inicpu_loopstart:
-        stdcall addCPU
-        inc cx
-        add edi,CPU_offset
-        cmp edi, dword [CPU_size]
-        jne inicpu_loopstart
-
-
-    ; ini for RAM
-    mov ax, word [RAMPages_count]
-    mov bx, RAM_offset
-    imul ax,bx
-    movzx eax,ax
-    mov dword [RAM_size],eax
-    mov ebx,eax
-    invoke HeapAlloc, [a],0,ebx
-    mov dword [RAM],eax
-
-    mov edi,0 ; offset in RAM array
-    mov cx,0
-    ; filling the array of RAM
-    iniram_loopstart:
-        stdcall addRAM
-        inc cx
-        add edi,RAM_offset
-        cmp edi, dword [RAM_size]
-        jne iniram_loopstart
-
-    ; ini for DISK
-    mov ax, word [DISKPages_count]
-    mov bx, DISK_offset
-    imul ax,bx
-    movzx eax,ax
-    mov dword [DISK_size],eax
-    mov ebx,eax
-    invoke HeapAlloc, [a],0,ebx
-    mov dword [DISK],eax
-
-    mov edi,0 ; offset in DISK array
-    mov cx,0
-    ; filling the array of DISK
-    inidisk_loopstart:
-        stdcall addDISK
-        inc cx
-        add edi,DISK_offset
-        cmp edi, dword [DISK_size]
-        jne inidisk_loopstart
-ret
-endp
+        ; functions for initialisation
 
 proc addCPU
     mov esi,dword[CPU]
@@ -216,6 +120,7 @@ proc addDISK
     
     ret
 endp
+
 proc addprocess
     mov esi,dword[processes]
     mov dx, word[current_name]
@@ -235,6 +140,116 @@ proc addprocess
     mov word [current_name],dx
     ret
 endp
+
+proc initialisation, a: DWORD
+    ; process array size
+    mov ax, word [Process_count]
+    mov bx, process_offset
+    imul ax,bx
+    ;
+
+    movzx eax,ax
+    mov dword [Process_size],eax
+
+
+    shl eax,1 ;expand array size x2
+
+    mov dword [Real_process_size],eax
+    mov ebx,eax
+    invoke HeapAlloc, [a],0,ebx
+    mov dword [processes],eax
+    mov esi,eax       ;;;;;;;;;;;;;
+
+    mov edi,0 ; offset in process array
+
+    ; filling the array of processes
+    ini_loopstart:
+        stdcall addprocess
+        add edi,process_offset
+        cmp edi, dword [Process_size]
+        jne ini_loopstart
+
+    ;
+    
+
+
+    ; ini for CPU
+    mov ax, word [CPU_count]
+    mov bx, CPU_offset
+    imul ax,bx
+    movzx eax,ax
+    mov dword [CPU_size],eax
+    mov ebx,eax
+    invoke HeapAlloc, [a],0,ebx
+    mov dword [CPU],eax
+    mov esi,eax       ;;;;;;;;;;;;;
+    mov edi,0 ; offset in CPU array
+    mov cx,0
+    ; filling the array of CPUs
+    inicpu_loopstart:
+        stdcall addCPU
+        inc cx
+        add edi,CPU_offset
+        cmp edi, dword [CPU_size]
+        jne inicpu_loopstart
+
+
+    ; ini for RAM
+    mov ax, word [RAMPages_count]
+    mov bx, RAM_offset
+    imul ax,bx
+    movzx eax,ax
+    mov dword [RAM_size],eax
+    mov ebx,eax
+    invoke HeapAlloc, [a],0,ebx
+    mov dword [RAM],eax
+    mov esi,eax       ;;;;;;;;;;;;;
+
+    mov edi,0 ; offset in RAM array
+    mov cx,0
+    ; filling the array of RAM
+    iniram_loopstart:
+        stdcall addRAM
+        inc cx
+        add edi,RAM_offset
+        cmp edi, dword [RAM_size]
+        jne iniram_loopstart
+
+    ; ini for DISK
+    mov ax, word [DISKPages_count]
+    mov bx, DISK_offset
+    imul ax,bx
+    movzx eax,ax
+    mov dword [DISK_size],eax
+    mov ebx,eax
+    invoke HeapAlloc, [a],0,ebx
+    mov dword [DISK],eax
+    mov esi,eax       ;;;;;;;;;;;;;
+
+    mov edi,0 ; offset in DISK array
+    mov cx,0
+    ; filling the array of DISK
+    inidisk_loopstart:
+        stdcall addDISK
+        inc cx
+        add edi,DISK_offset
+        cmp edi, dword [DISK_size]
+        jne inidisk_loopstart
+ret
+endp
+
+        ; end initialisation block
+
+
+proc realloc
+    mov eax, dword[Real_process_size]
+    shl eax,1
+    mov dword[Real_process_size],eax
+    invoke HeapReAlloc, dword[myheap], 0, dword[processes], eax
+    mov dword[processes],eax
+ret
+endp
+
 
 proc deleteprocess
     mov esi,dword[processes]
@@ -284,7 +299,6 @@ proc timeupdate
         stdcall newprocess
     
     loop_prepare:
-    nop eax
     pop eax
     mov edi,0 ; offset in process array
     time_loopstart:
@@ -355,6 +369,9 @@ proc deletefromdiskram, index: dword, offset: dword, arr: dword
 ret
 endp
 
+
+; comparator2 push on 1 - ram, 2 - disk
+; comparator1 if <> -1 - index of ram or disk to delete; depends on comparator2 
 proc diskrampush, process_topush: dword , comparator1: dword, comparator2: dword
     locals
         arr1 dd ?
@@ -363,7 +380,7 @@ proc diskrampush, process_topush: dword , comparator1: dword, comparator2: dword
         arr2 dd ?
         offset2 dd ?
     endl
-
+    push ecx ; save currentcellcount for function
     .if [comparator2] = 1
         mov eax,[RAM]
         mov [arr1],eax
@@ -388,15 +405,17 @@ proc diskrampush, process_topush: dword , comparator1: dword, comparator2: dword
     mov edi, 0
     mov ecx, [process_topush]
     .loopstart:
-        .if dword[esi+edi+tmp_offset] = -1
-            mov dword[esi+edi+tmp_offset],ecx
+        .if word[esi+edi+tmp_offset] = -1
+            mov word[esi+edi+tmp_offset],cx
+            jmp .endloop
         .else
             add edi,[offset1]
             cmp edi, dword [size1]
             jne .loopstart
         .endif
 
-        .if edi = dword [size1]
+        .endloop:
+        .if edi >= dword [size1]
             mov eax,-1
         .else 
             .if [comparator1] <> -1
@@ -404,23 +423,20 @@ proc diskrampush, process_topush: dword , comparator1: dword, comparator2: dword
             .endif
             mov eax,0
         .endif
-
+    pop ecx
     ret
 endp
 
 proc RAMpush_process, process_topush: dword
     locals
-        count dw ?
         currentcount dw 0
     endl
-    mov ax, word[esi+edi+cells_count_offset]
-    mov [count],ax
-    mov cx, word[count]
+    mov cx, word[esi+edi+cells_count_offset]
     .loopstart:
 
-        stdcall diskrampush, [process_topush],0,1
+        stdcall diskrampush, [process_topush],-1,1
         .if eax = -1
-            stdcall diskrampush, [process_topush],0,2
+            stdcall diskrampush, [process_topush],-1,2
         .endif
         inc [currentcount]
         cmp [currentcount],cx
@@ -451,7 +467,7 @@ proc CPUpush, process_topush: dword
             mov ax , word[esi+edi]
             pop edi
             pop esi
-            mov word[esi+edi+process_on_CPU_offset],ax
+            mov word[esi+edi+number_in_CPU_offset],ax
             .if word[esi+edi+was_on_CPU_offset] = 0
                 stdcall RAMpush_process,[process_topush]
                 mov word[esi+edi+was_on_CPU_offset],1
@@ -475,11 +491,93 @@ proc CPUpop, process_topop: dword
     mov word[esi+edi+process_on_CPU_offset],-1
     movzx ecx,cx
     stdcall GetEdi, ecx,process_offset
-    mov esi,dword[processes]
+    mov esi, dword[processes]
     mov word[esi+edi+number_in_CPU_offset],-1
 ret
 endp
 
+
+proc generateIO
+    push ecx
+    mov edi,0
+    mov esi, dword[processes]
+    movzx ecx, word[Random_probability]
+    
+    .loopstart:
+        mov edx, 0
+        .if word[esi+edi+number_in_CPU_offset] <> -1
+            .if word[esi+edi+need_IO_offset] = 0
+                rdrand eax
+                div [Random_delimiter]
+                inc edx
+                .if edx <= ecx
+                    mov word[esi+edi+need_IO_offset],1
+                .endif
+            .endif
+        .endif
+        add edi, process_offset
+        cmp edi, dword[Process_size]
+        jb .loopstart
+    pop ecx
+ret
+endp
+
+proc isexecuted
+    mov edi,0
+    mov esi, dword[CPU]
+    .loopstart:
+        ; get process name from cpu
+        movzx eax, word[esi+edi]
+        .if ax <> -1
+            stdcall isprocexecuted, eax
+        .endif
+        add edi, CPU_offset
+        cmp edi, dword[CPU_size]
+        jb .loopstart
+ret
+endp
+proc isprocexecuted, process_tocheck: dword
+    push edi
+    push esi
+    stdcall GetEdi,[process_tocheck],process_offset
+    mov esi, dword[processes]
+    .if word[esi+edi+need_IO_offset] = 0
+        stdcall diskcheck, [process_tocheck]
+    .else
+        mov eax,0
+    .endif
+
+    mov word[esi+edi+executed_offset],ax
+    pop esi
+    pop edi
+
+ret
+endp
+
+proc diskcheck, processname: dword
+    push ecx
+    push edi
+    push esi
+    
+    mov ecx, dword[processname]
+    mov edi,0
+    mov esi, dword[DISK]
+    .loopstart:
+        .if word[esi+edi+process_on_DISK_offset] = ecx
+            mov eax,0
+            jmp .loopend
+        .endif
+        add edi, DISK_offset
+        cmp edi, dword[DISK_size]
+        jb .loopstart
+    
+    mov eax,1
+    .loopend:
+    pop esi
+    pop edi
+    pop ecx
+ret
+endp
 section '.idata' import data readable writeable
   library kernel32, 'KERNEL32.DLL',\
           user32, 'USER32.DLL'
