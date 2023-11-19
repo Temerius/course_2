@@ -1,7 +1,38 @@
+
+; Settings
+  Width = 1400
+  Height = 800
+  R = 0
+  G = 0
+  B = 0
+
+; Code
 format PE GUI 4.0
 entry start
+include 'win32a.inc'
 
 section '.data' data readable writeable
+    _class TCHAR 'FASMWIN32', 0
+    _title TCHAR 'GDI32 Test', 0
+    _error TCHAR 'Startup failed.', 0
+
+    wc WNDCLASS 0, WindowProc, 0, 0, NULL, NULL, NULL, COLOR_BTNFACE + 1, NULL, _class
+
+    msg MSG
+    hDC dd 0
+    hwnd dd 0
+    hBrush dd ?
+    hPen dd ?
+    hFont dd ?
+    rect RECT
+    
+    bmi BITMAPINFOHEADER
+
+    ; Define the variables for heap memory allocation
+    heapMemory dd 0
+    heapSize dd Width * Height * 4 ; 4 bytes per pixel (32-bit)
+
+
     CPU_count dw 4  ; variable for cpu count 
     RAMPages_count dw 32 ; variable for rampages count
     DISKPages_count dw 16 ; variable for diskpages count
@@ -9,7 +40,8 @@ section '.data' data readable writeable
     Process_size dd ? ; variable for the size off the process array
     Real_process_size dd ?
     Random_probability dw 20
-    Random_delimiter dw 100
+    Random_IOdelimiter dw 100
+    Random_RAMdelimiter dw 4
 
     processes dd ? ; address of the process array
 
@@ -59,22 +91,113 @@ section '.data' data readable writeable
     TIME_FOR_BEREADY=25000
     TIME_FOR_REFRESH=4000
 
+    ;FROOOOOOOOOOOOOOOOOOOOONT
+
+    Colorarray dd 0x00009999,0x0000CC00,0x00FFFF00,0x00FFB700,0x00FF0000,0x00A60000,0x004f0500
+
+    margin_top = 10
+    margin_left = 30
+    margin_right = 30
+    margin_bottom = 10
+
+    header_height = 30
+    cpu_cpu_gap = 5
+    gap = 5
+    square_size = 50
+
+    formatString db 'PID %d', 0
+    number dd 2
 
 
 
 
 section '.text' code readable executable
-  include 'win32a.inc'
+  
   include './MACRO/IF.INC'
 
 proc start
 
+    invoke GetModuleHandle, 0
+    mov [wc.hInstance], eax
+    invoke LoadIcon, 0, IDI_APPLICATION
+    mov [wc.hIcon], eax
+    invoke LoadCursor, 0, IDC_ARROW
+    mov [wc.hCursor], eax
+    invoke RegisterClass, wc
+    test eax, eax
+    jz error
 
- 
+    invoke CreateWindowEx, 0, _class, _title, WS_VISIBLE + WS_DLGFRAME + WS_SYSMENU, 0, 0, Width, Height, NULL, NULL, [wc.hInstance], NULL
+    mov [hwnd], eax
+    invoke GetDC, [hwnd]
+    mov [hDC], eax
+    ;mov [bmi.biSize], sizeof.BITMAPINFOHEADER
+    ;mov [bmi.biWidth], Width
+    ;mov [bmi.biHeight], Height
+    ;mov [bmi.biPlanes], 1
+    ;mov [bmi.biBitCount], 32
+    ;mov [bmi.biCompression], BI_RGB
 
-    invoke GetProcessHeap 
-    mov dword[myheap],eax
-    stdcall initialisation,eax
+    mov dword [myheap],0
+    invoke GetProcessHeap
+    mov dword[myheap], eax
+
+    ;invoke HeapAlloc, [myheap], HEAP_ZERO_MEMORY, [heapSize]
+    ;test eax, eax
+    ;jz error
+    ;mov [heapMemory], eax
+
+    ;mov edi, [heapMemory]
+    ;mov ecx, Width * Height
+    ;mov eax, (B shl 16) + (G shl 8) + R
+    ;rep stosd
+
+
+    invoke CreateSolidBrush, 0x00000000 
+    mov [hBrush], eax
+    invoke  SelectObject, [hDC],eax 
+    invoke Rectangle, [hDC], 0,0,Width,Height
+    
+    
+    
+    invoke  DeleteObject, [hBrush]
+
+    ;invoke CreateFont, 16, 0, 0, 0, FW_NORMAL, 0, 0, 0, DEFAULT_CHARSET, 0, 0, 0, VARIABLE_PITCH or FF_ROMAN, 'Arial'
+    
+    ;invoke CreateFontIndirect, lf
+    ;mov [hFont], eax
+    ;invoke SelectObject, [hDC], eax
+
+    ; Форматируем строку
+    mov eax, number
+    mov ebx, formatString
+    invoke wsprintf, ebx, formatString, eax
+
+    ; Рисуем текст
+    invoke TextOut, [hDC], 10, 10, ebx, eax
+    
+    ;mov [rect.left], 100
+    ;mov [rect.right], 500
+    ;mov [rect.top], 200
+    ;mov [rect.bottom], 500
+    ;lea eax, [rect] 
+    ;invoke FillRect, [hDC], eax, [hBrush]
+    ;invoke CreateSolidBrush, 0x0000FF00 
+    ;mov [hBrush], eax
+    ;invoke  SelectObject, [hDC],eax 
+    ;invoke  Ellipse, [hDC], 250, 50, 400, 200
+    ;invoke Rectangle, [hDC], 250,250,500,500, 0x0066D7D1
+   
+    
+
+    stdcall initialisation,[myheap]
+
+    stdcall drawCPU
+    invoke  ReleaseDC, [hwnd], [hDC]
+
+    invoke  ShowWindow, [hwnd], SW_SHOWNORMAL
+    invoke  UpdateWindow, [hwnd]
+
 
     ; timer start
 
@@ -86,159 +209,49 @@ proc start
     ; main loop
     mov ecx,0
     stdcall CPUpush,ecx
-    time_loop:
+    ;time_loop:
 
         stdcall timeupdate
         stdcall generateIO
-        jmp time_loop
+        ;jmp time_loop
+
+    msg_loop:
+        invoke GetMessage, msg, NULL, 0, 0
+        cmp eax, 1
+        jb end_loop
+        jne msg_loop
+        
+        invoke TranslateMessage, msg
+        invoke DispatchMessage, msg
+        ;invoke SetDIBitsToDevice, [hDC], 0, 0, Width, Height, 0, 0, 0, Height, [heapMemory], bmi, 0
+        jmp msg_loop
+
+    error:
+        invoke MessageBox, NULL, _error, NULL, MB_ICONERROR + MB_OK
+
+    end_loop:
+        invoke HeapFree, [myheap], 0, [heapMemory]
+
+        invoke ExitProcess, [msg.wParam]
+
 
     ret
 endp
 
-        ; functions for initialisation
 
-proc addCPU
-    mov esi,dword[CPU]
-    mov word [esi+edi],cx
-    mov word [esi+edi+process_on_CPU_offset], -1
-    
-    ret
+
+proc WindowProc uses ebx esi edi, hwnd, wmsg, wparam, lparam
+  cmp [wmsg], WM_DESTROY
+  je .wmdestroy
+  .defwndproc:
+  invoke DefWindowProc, [hwnd], [wmsg], [wparam], [lparam]
+  jmp .finish
+  .wmdestroy:
+  invoke PostQuitMessage, 0
+  xor eax, eax
+  .finish:
+  ret
 endp
-
-proc addRAM
-    mov esi,dword[RAM]
-    mov word [esi+edi],cx
-    mov word [esi+edi+process_on_RAM_offset], -1
-    
-    ret
-endp
-
-proc addDISK
-    mov esi,dword[DISK]
-    mov word [esi+edi],cx
-    mov word [esi+edi+process_on_DISK_offset], -1
-    
-    ret
-endp
-
-proc addprocess
-    mov esi,dword[processes]
-    mov dx, word[current_name]
-    mov word [esi+edi],dx
-    mov word [esi+edi+number_in_CPU_offset], -1
-    mov word [esi+edi+cells_count_offset],4
-    mov word [esi+edi+hung_stage_offset],1
-    mov word [esi+edi+downtime_offset],0
-    mov word [esi+edi+uptime_offset],0
-    mov word [esi+edi+finaltime_offset],0
-    mov word [esi+edi+need_IO_offset],0
-    mov dword [esi+edi+downtime_tick_offset],0
-    mov dword [esi+edi+uptime_tick_offset],0
-    mov word [esi+edi+executed_offset],0
-    mov word [esi+edi+was_on_CPU_offset],0
-    inc dx
-    mov word [current_name],dx
-    ret
-endp
-
-proc initialisation, a: DWORD
-    ; process array size
-    mov ax, word [Process_count]
-    mov bx, process_offset
-    imul ax,bx
-    ;
-
-    movzx eax,ax
-    mov dword [Process_size],eax
-
-
-    shl eax,1 ;expand array size x2
-
-    mov dword [Real_process_size],eax
-    mov ebx,eax
-    invoke HeapAlloc, [a],0,ebx
-    mov dword [processes],eax
-    mov esi,eax       ;;;;;;;;;;;;;
-
-    mov edi,0 ; offset in process array
-
-    ; filling the array of processes
-    ini_loopstart:
-        stdcall addprocess
-        add edi,process_offset
-        cmp edi, dword [Process_size]
-        jne ini_loopstart
-
-    ;
-    
-
-
-    ; ini for CPU
-    mov ax, word [CPU_count]
-    mov bx, CPU_offset
-    imul ax,bx
-    movzx eax,ax
-    mov dword [CPU_size],eax
-    mov ebx,eax
-    invoke HeapAlloc, [a],0,ebx
-    mov dword [CPU],eax
-    mov esi,eax       ;;;;;;;;;;;;;
-    mov edi,0 ; offset in CPU array
-    mov cx,0
-    ; filling the array of CPUs
-    inicpu_loopstart:
-        stdcall addCPU
-        inc cx
-        add edi,CPU_offset
-        cmp edi, dword [CPU_size]
-        jne inicpu_loopstart
-
-
-    ; ini for RAM
-    mov ax, word [RAMPages_count]
-    mov bx, RAM_offset
-    imul ax,bx
-    movzx eax,ax
-    mov dword [RAM_size],eax
-    mov ebx,eax
-    invoke HeapAlloc, [a],0,ebx
-    mov dword [RAM],eax
-    mov esi,eax       ;;;;;;;;;;;;;
-
-    mov edi,0 ; offset in RAM array
-    mov cx,0
-    ; filling the array of RAM
-    iniram_loopstart:
-        stdcall addRAM
-        inc cx
-        add edi,RAM_offset
-        cmp edi, dword [RAM_size]
-        jne iniram_loopstart
-
-    ; ini for DISK
-    mov ax, word [DISKPages_count]
-    mov bx, DISK_offset
-    imul ax,bx
-    movzx eax,ax
-    mov dword [DISK_size],eax
-    mov ebx,eax
-    invoke HeapAlloc, [a],0,ebx
-    mov dword [DISK],eax
-    mov esi,eax       ;;;;;;;;;;;;;
-
-    mov edi,0 ; offset in DISK array
-    mov cx,0
-    ; filling the array of DISK
-    inidisk_loopstart:
-        stdcall addDISK
-        inc cx
-        add edi,DISK_offset
-        cmp edi, dword [DISK_size]
-        jne inidisk_loopstart
-ret
-endp
-
-        ; end initialisation block
 
 
 proc realloc
@@ -508,7 +521,7 @@ proc generateIO
         .if word[esi+edi+number_in_CPU_offset] <> -1
             .if word[esi+edi+need_IO_offset] = 0
                 rdrand eax
-                div [Random_delimiter]
+                div [Random_IOdelimiter]
                 inc edx
                 .if edx <= ecx
                     mov word[esi+edi+need_IO_offset],1
@@ -578,17 +591,26 @@ proc diskcheck, processname: dword
     pop ecx
 ret
 endp
+
+
 section '.idata' import data readable writeable
   library kernel32, 'KERNEL32.DLL',\
-          user32, 'USER32.DLL'
+          user32, 'USER32.DLL',\
+          gdi32, 'GDI32.DLL'
 
-  import kernel32,\
-         ExitProcess, 'ExitProcess',\
-         GetTickCount, 'GetTickCount',\
-         GetProcessHeap, 'GetProcessHeap',\
-         HeapAlloc, 'HeapAlloc',\
-         HeapReAlloc, 'HeapReAlloc',\
-         HeapFree, 'HeapFree'
+  ;import kernel32,\
+         ;ExitProcess, 'ExitProcess',\
+         ;GetTickCount, 'GetTickCount',\
+         ;GetProcessHeap, 'GetProcessHeap',\
+         ;HeapAlloc, 'HeapAlloc',\
+         ;HeapReAlloc, 'HeapReAlloc',\
+         ;HeapFree, 'HeapFree'
 
-  import user32,\
-         MessageBox, 'MessageBoxA'
+  ;import user32,\
+         ;MessageBox, 'MessageBoxA'
+  
+  include 'api\kernel32.inc'
+  include 'api\gdi32.inc'
+  include 'api\user32.inc'
+  include 'Graphics.INC'
+  include 'Ini.INC'
