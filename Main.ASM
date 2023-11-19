@@ -24,6 +24,8 @@ section '.data' data readable writeable
     hBrush dd ?
     hPen dd ?
     hFont dd ?
+    hImage dd ?
+    hImageDC dd ?
     rect RECT
     
     bmi BITMAPINFOHEADER
@@ -105,9 +107,13 @@ section '.data' data readable writeable
     gap = 5
     square_size = 50
 
-    formatString db 'PID %d', 0
+    buffer db 16 dup (?)
     number dd 2
+    Arial db 'Arial', 0
 
+    ;Gemoji db 'D:\BSUIR\ASSembly\course_2\grinning_face_emoji.bmp', 0
+    Gemoji db 'D:\BSUIR\ASSembly\course_2\grinning_face_emoji2.bmp', 0
+    ;Gemoji db 'i1.jpg',0
 
 
 
@@ -156,31 +162,42 @@ proc start
     invoke CreateSolidBrush, 0x00000000 
     mov [hBrush], eax
     invoke  SelectObject, [hDC],eax 
-    invoke Rectangle, [hDC], 0,0,Width,Height
-    
-    
-    
+    invoke Rectangle, [hDC], 0,0,Width,Height 
     invoke  DeleteObject, [hBrush]
 
     ;invoke CreateFont, 16, 0, 0, 0, FW_NORMAL, 0, 0, 0, DEFAULT_CHARSET, 0, 0, 0, VARIABLE_PITCH or FF_ROMAN, 'Arial'
     
-    ;invoke CreateFontIndirect, lf
-    ;mov [hFont], eax
-    ;invoke SelectObject, [hDC], eax
-
-    ; Форматируем строку
-    mov eax, number
-    mov ebx, formatString
-    invoke wsprintf, ebx, formatString, eax
+   
 
     ; Рисуем текст
-    invoke TextOut, [hDC], 10, 10, ebx, eax
+    ;invoke TextOut, [hDC], 10, 10, ebx, eax
+    ;invoke CreateFont, 16, 0, 0, 0, FW_NORMAL, 0, 0, 0, DEFAULT_CHARSET, 0, 0, 0, VARIABLE_PITCH + FF_ROMAN, 'Arial'
+    ;invoke CreateFont, 1000, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET, OUT_TT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY, VARIABLE_PITCH+FF_ROMAN, Arial
+    invoke SetBkColor, [hDC], 0x00000000 
+    invoke SetTextColor, [hDC], 0x00FFFFFF 
+    invoke CreateFont, 100, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET, OUT_TT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY, VARIABLE_PITCH+FF_ROMAN, Arial
+
+    mov [hFont], eax 
+    invoke  SelectObject, [hDC],eax
+    mov [rect.left], 100
+    mov [rect.right], 500
+    mov [rect.top], 200
+    mov [rect.bottom], 500
+    lea ebx, [rect] 
+    stdcall IntToStr, [number],buffer,0
+    invoke DrawText, [hDC], buffer, -1, ebx, DT_LEFT
+
+    nop eax
+    ;invoke LoadImage, 0, Gemoji, IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE
+    invoke LoadImage, [hDC], Gemoji, IMAGE_BITMAP, 0, 0,LR_DEFAULTCOLOR+LR_DEFAULTSIZE+LR_LOADFROMFILE
+    mov [hImage], eax
+    invoke CreateCompatibleDC, [hDC]
+    mov [hImageDC], eax
+    mov eax,[hImage]
+    invoke SelectObject, [hImageDC], eax
+    invoke BitBlt, [hDC], 500, 500, 30, 30, [hImageDC], 0, 0, SRCCOPY
+    invoke DeleteDC, [hImageDC]
     
-    ;mov [rect.left], 100
-    ;mov [rect.right], 500
-    ;mov [rect.top], 200
-    ;mov [rect.bottom], 500
-    ;lea eax, [rect] 
     ;invoke FillRect, [hDC], eax, [hBrush]
     ;invoke CreateSolidBrush, 0x0000FF00 
     ;mov [hBrush], eax
