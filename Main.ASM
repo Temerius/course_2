@@ -44,6 +44,7 @@ section '.data' data readable writeable
     Random_probability dw 20
     Random_IOdelimiter dw 100
     Random_RAMdelimiter dw 4
+    NeedIOCount dd 0
 
     processes dd ? ; address of the process array
 
@@ -102,20 +103,30 @@ section '.data' data readable writeable
     margin_right = 30
     margin_bottom = 10
 
+    text_margin_top = 10
+    text_margin_left = 45
+    text_margin_right = 0
+    text_margin_bottom = 60
+
     header_height = 30
     cpu_cpu_gap = 5
     gap = 5
-    square_size = 50
+    square_size = 100
 
     buffer db 16 dup (?)
-    number dd 2
     Arial db 'Arial', 0
 
-    ;Gemoji db 'D:\BSUIR\ASSembly\course_2\grinning_face_emoji.bmp', 0
+   
+   
+    result_buffer db 256 dup (?) ; Буфер для объединенной строки
+    PID db 'PID',0
+    IOEVENTS db 'I/O EVENTS (',0
+    IOEVENTSEND db ')',0
+    space db ' ',0
+
+     ;Gemoji db 'D:\BSUIR\ASSembly\course_2\grinning_face_emoji.bmp', 0
     Gemoji db 'D:\BSUIR\ASSembly\course_2\grinning_face_emoji2.bmp', 0
     ;Gemoji db 'i1.jpg',0
-
-
 
 section '.text' code readable executable
   
@@ -137,58 +148,30 @@ proc start
     mov [hwnd], eax
     invoke GetDC, [hwnd]
     mov [hDC], eax
-    ;mov [bmi.biSize], sizeof.BITMAPINFOHEADER
-    ;mov [bmi.biWidth], Width
-    ;mov [bmi.biHeight], Height
-    ;mov [bmi.biPlanes], 1
-    ;mov [bmi.biBitCount], 32
-    ;mov [bmi.biCompression], BI_RGB
 
     mov dword [myheap],0
     invoke GetProcessHeap
     mov dword[myheap], eax
 
-    ;invoke HeapAlloc, [myheap], HEAP_ZERO_MEMORY, [heapSize]
-    ;test eax, eax
-    ;jz error
-    ;mov [heapMemory], eax
+   
 
-    ;mov edi, [heapMemory]
-    ;mov ecx, Width * Height
-    ;mov eax, (B shl 16) + (G shl 8) + R
-    ;rep stosd
-
-
+    ; draw backgroundcolor
     invoke CreateSolidBrush, 0x00000000 
     mov [hBrush], eax
     invoke  SelectObject, [hDC],eax 
     invoke Rectangle, [hDC], 0,0,Width,Height 
     invoke  DeleteObject, [hBrush]
 
-    ;invoke CreateFont, 16, 0, 0, 0, FW_NORMAL, 0, 0, 0, DEFAULT_CHARSET, 0, 0, 0, VARIABLE_PITCH or FF_ROMAN, 'Arial'
-    
+    ;;;;;;;;;;;;
+        
+        
+
+        ;stdcall MyDrawText, 0x00000000,0x00FFFFFF,100, 100,200,700,700,result_buffer
+
    
-
-    ; Рисуем текст
-    ;invoke TextOut, [hDC], 10, 10, ebx, eax
-    ;invoke CreateFont, 16, 0, 0, 0, FW_NORMAL, 0, 0, 0, DEFAULT_CHARSET, 0, 0, 0, VARIABLE_PITCH + FF_ROMAN, 'Arial'
-    ;invoke CreateFont, 1000, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET, OUT_TT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY, VARIABLE_PITCH+FF_ROMAN, Arial
-    invoke SetBkColor, [hDC], 0x00000000 
-    invoke SetTextColor, [hDC], 0x00FFFFFF 
-    invoke CreateFont, 100, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET, OUT_TT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY, VARIABLE_PITCH+FF_ROMAN, Arial
-
-    mov [hFont], eax 
-    invoke  SelectObject, [hDC],eax
-    mov [rect.left], 100
-    mov [rect.right], 500
-    mov [rect.top], 200
-    mov [rect.bottom], 500
-    lea ebx, [rect] 
-    stdcall IntToStr, [number],buffer,0
-    invoke DrawText, [hDC], buffer, -1, ebx, DT_LEFT
-
     nop eax
-    ;invoke LoadImage, 0, Gemoji, IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE
+    
+    ; IMAGE
     invoke LoadImage, [hDC], Gemoji, IMAGE_BITMAP, 0, 0,LR_DEFAULTCOLOR+LR_DEFAULTSIZE+LR_LOADFROMFILE
     mov [hImage], eax
     invoke CreateCompatibleDC, [hDC]
@@ -197,6 +180,14 @@ proc start
     invoke SelectObject, [hImageDC], eax
     invoke BitBlt, [hDC], 500, 500, 30, 30, [hImageDC], 0, 0, SRCCOPY
     invoke DeleteDC, [hImageDC]
+
+    ; IMAGE
+
+
+
+
+
+   
     
     ;invoke FillRect, [hDC], eax, [hBrush]
     ;invoke CreateSolidBrush, 0x0000FF00 
@@ -208,6 +199,9 @@ proc start
     
 
     stdcall initialisation,[myheap]
+
+    stdcall CPUpush,0
+    stdcall CPUpush,3
 
     stdcall drawCPU
     invoke  ReleaseDC, [hwnd], [hDC]
@@ -224,12 +218,12 @@ proc start
     ;
 
     ; main loop
-    mov ecx,0
-    stdcall CPUpush,ecx
-    ;time_loop:
-
+    ;mov ecx,100
+   ; time_loop:
+        stdcall drawCPU
         stdcall timeupdate
-        stdcall generateIO
+        ;stdcall generateIO
+        ;loop time_loop
         ;jmp time_loop
 
     msg_loop:
@@ -392,6 +386,58 @@ proc GetEdi, name: dword, offset: dword
     ret
 endp
 
+proc strlen, str: dword
+    push ecx
+    mov esi, [str]
+    xor ecx, ecx
+    .startloop:
+        cmp byte [esi + ecx], 0
+        je  .loopend
+        inc ecx
+        jmp .startloop
+    .loopend:
+    mov eax,ecx
+    pop ecx
+    ret
+endp
+
+proc concatinate, str1: dword, str2: dword, resultbuffer: dword, needclean: dword
+
+    .if [needclean] = 1
+        stdcall strclean, [resultbuffer]
+    .endif
+
+    stdcall strlen, [str1]
+    mov edi, [resultbuffer]
+    mov ecx,eax
+    rep movsb
+    
+    mov ebx,eax ; first len
+
+
+    stdcall strlen, [str2]
+    mov edi, [resultbuffer]
+    add edi,ebx ; start for second str
+    mov ecx,eax ; second len
+    rep movsb
+ret
+endp
+
+proc strclean, str: dword
+    push esi
+    push ecx
+    push edi
+    stdcall strlen, [str]
+    mov ecx,eax
+    mov edi, [str]        
+    mov eax, 0                      
+    cld                           
+    rep stosd 
+    pop edi
+    pop ecx
+    pop esi
+    ret
+endp
 proc deletefromdiskram, index: dword, offset: dword, arr: dword
     stdcall GetEdi,[index],[offset]
     mov esi, dword[arr]
@@ -476,9 +522,9 @@ endp
 
 
 proc CPUpush, process_topush: dword
-
-    stdcall GetEdi, [process_topush],process_offset
     mov esi, dword[processes]
+    stdcall GetEdi, [process_topush],process_offset
+    
     .if word[esi+edi+number_in_CPU_offset] = -1
         push esi
         push edi
@@ -492,7 +538,7 @@ proc CPUpush, process_topush: dword
                 .endif
             .endif
         .if edi < dword[CPU_size]
-            mov eax,[process_topush]
+            mov eax, dword [process_topush]
             mov word[esi+edi+process_on_CPU_offset],ax
             mov ax , word[esi+edi]
             pop edi
@@ -542,6 +588,7 @@ proc generateIO
                 inc edx
                 .if edx <= ecx
                     mov word[esi+edi+need_IO_offset],1
+                    inc [NeedIOCount]
                 .endif
             .endif
         .endif
@@ -606,8 +653,12 @@ proc diskcheck, processname: dword
     pop esi
     pop edi
     pop ecx
+
 ret
+
 endp
+
+
 
 
 section '.idata' import data readable writeable
@@ -629,5 +680,5 @@ section '.idata' import data readable writeable
   include 'api\kernel32.inc'
   include 'api\gdi32.inc'
   include 'api\user32.inc'
-  include 'Graphics.INC'
-  include 'Ini.INC'
+  include 'Graphics.ASM'
+  include 'Ini.ASM'

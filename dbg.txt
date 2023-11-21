@@ -1,0 +1,16 @@
+402219
+
+
+stdcall strlen, str1
+        mov edi, result_buffer
+        mov ecx,eax
+        rep movsb
+        
+        mov ebx,eax ; first len
+
+
+        stdcall strlen, str2
+        mov edi, result_buffer
+        add edi,ebx ; start for second str
+        mov ecx,eax ; second len
+        rep movsb
