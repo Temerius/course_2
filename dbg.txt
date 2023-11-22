@@ -1,16 +1,94 @@
 402219
 
 
-stdcall strlen, str1
-        mov edi, result_buffer
-        mov ecx,eax
-        rep movsb
+proc drawCPU
+
+    local x1 dd margin_left
+    local y1 dd margin_top+header_height+header_cpu_gap
+    local x2 dd margin_left+square_size
+    local y2 dd margin_top+header_height+header_cpu_gap+square_size
+    local textx1 dd ?
+    local textx2 dd ?
+    local texty1 dd ?
+    local texty2 dd ?
+    local current_color dd ?
+    ;local current_name dd ?
+    mov esi, dword[CPU]
+    mov edi,0
+    invoke CreatePen, PS_SOLID, 2, 0x00FFFFFF
+    mov [hPen], eax
+
+   
+    .loopstart:
+        .if word[esi+edi+process_on_CPU_offset] <> -1
+            movzx eax, word[esi+edi+process_on_CPU_offset]
+            push esi
+            push edi
+            mov esi, dword[processes]
+            stdcall GetEdi, eax,process_offset
+            movzx eax, word[esi+edi+hung_stage_offset]
+            imul eax,4
+            push edi
+            mov edi, Colorarray         
+            add edi,eax
+            mov eax,[edi]
+            mov [current_color], eax
+            invoke CreateSolidBrush, eax
+            pop edi
+            mov [hBrush], eax
+            invoke CreatePen, PS_SOLID, 2, [current_color]
+            mov [hPen], eax
+            ;invoke SelectObject, [hDC], [hBrush]
+            invoke SelectObject, [hDC], [hPen]
+            invoke SelectObject, [hDC], [hBrush]
+            invoke Rectangle, [hDC], [x1],[y1],[x2],[y2]
+            invoke CreatePen, PS_SOLID, 2, 0x00FFFFFF
+            mov [hPen], eax
+            ; draw text
+            mov eax, [x1]
+            add eax,text_margin_left
+            mov [textx1],eax
+            mov eax, [x2]
+            sub eax,text_margin_right
+            mov [textx2],eax
+            mov eax, [y1]
+            add eax,text_margin_top
+            mov [texty1],eax
+            mov eax, [y2]
+            sub eax,text_margin_bottom
+            mov [texty2],eax
+            
+            stdcall strclean, buffer
+            movzx eax, word[esi+edi]
+            ;mov [current_name],eax
+            stdcall IntToStr, eax,buffer,0
+            stdcall concatinate, PID,space,result_buffer,1
+            stdcall concatinate, result_buffer,buffer,result_buffer,0
+            stdcall MyDrawText, [current_color],0x00000000,20,[textx1],[texty1],[textx2],[texty2],result_buffer,DT_LEFT
+            ;
+            invoke CreateSolidBrush, 0x00000000
+            mov [hBrush], eax
+            invoke SelectObject, [hDC], [hBrush]
+            pop edi
+            pop esi
+
+        .else
+            invoke SelectObject, [hDC], [hPen]
+            invoke Rectangle, [hDC], [x1],[y1],[x2],[y2]
+            stdcall strclean, buffer
+            movzx eax, word[esi+edi]
+            stdcall IntToStr, eax,buffer,0
+            stdcall concatinate, CPUNAME,space,result_buffer,1
+            stdcall concatinate, result_buffer,buffer,result_buffer,0
+            stdcall MyDrawText, 0x00000000,0x00FFFFFF,20,[x1], [y1],[x2],[y2],result_buffer,DT_SINGLELINE+DT_CENTER+DT_VCENTER    
+        .endif
+
+        add [x1],square_size+cpu_cpu_gap
+        add [x2],square_size+cpu_cpu_gap
         
-        mov ebx,eax ; first len
+        add edi,CPU_offset
+        cmp edi, dword[CPU_size]
+        jb .loopstart
 
-
-        stdcall strlen, str2
-        mov edi, result_buffer
-        add edi,ebx ; start for second str
-        mov ecx,eax ; second len
-        rep movsb
+ret
+endp

@@ -87,8 +87,15 @@ section '.data' data readable writeable
     Reset_count db 0 ; current count for reset
     GAMEOVER=10 ; count for reset
     timer dd 0 ; current tick count
+    time dd 0 
+    newprocesstime dd 0
+    seconds dd 0
+    minutes dd 0
+    hours dd 0
+    score dd 0
     myheap dd 0 ; heap from getprocessheap
-
+    
+    
     TIME_FOR_NEW_PROCESS=20000
     TIME_FOR_NEXT_STAGE=6000
     TIME_FOR_BEREADY=25000
@@ -98,7 +105,7 @@ section '.data' data readable writeable
 
     Colorarray dd 0x00009999,0x0000CC00,0x00FFFF00,0x00FFB700,0x00FF0000,0x00A60000,0x004f0500
 
-    margin_top = 10
+    margin_top = 20
     margin_left = 30
     margin_right = 30
     margin_bottom = 10
@@ -108,11 +115,19 @@ section '.data' data readable writeable
     text_margin_right = 0
     text_margin_bottom = 60
 
-    header_height = 30
+    header_height = 40
+    header_width = 1700
+    left_header_width = 700
+    right_header_width = 1000
+
+
+
     cpu_cpu_gap = 5
-    gap = 5
+    header_cpu_gap = 15
+    cpu_middle_gap = 15
     square_size = 100
 
+  
     buffer db 16 dup (?)
     Arial db 'Arial', 0
 
@@ -122,7 +137,15 @@ section '.data' data readable writeable
     PID db 'PID',0
     IOEVENTS db 'I/O EVENTS (',0
     IOEVENTSEND db ')',0
+    UPTIME db 'Uptime',0
+    SCORE db 'Score',0
+    CPUNAME db 'CPU',0
+    IDLE db 'Idle Processes :',0
+    MEMPAGES db 'Memory Pages in RAM :',0
+
+    COLOMN db ':',0
     space db ' ',0
+    ZERO db '0',0
 
      ;Gemoji db 'D:\BSUIR\ASSembly\course_2\grinning_face_emoji.bmp', 0
     Gemoji db 'D:\BSUIR\ASSembly\course_2\grinning_face_emoji2.bmp', 0
@@ -162,14 +185,6 @@ proc start
     invoke Rectangle, [hDC], 0,0,Width,Height 
     invoke  DeleteObject, [hBrush]
 
-    ;;;;;;;;;;;;
-        
-        
-
-        ;stdcall MyDrawText, 0x00000000,0x00FFFFFF,100, 100,200,700,700,result_buffer
-
-   
-    nop eax
     
     ; IMAGE
     invoke LoadImage, [hDC], Gemoji, IMAGE_BITMAP, 0, 0,LR_DEFAULTCOLOR+LR_DEFAULTSIZE+LR_LOADFROMFILE
@@ -200,10 +215,27 @@ proc start
 
     stdcall initialisation,[myheap]
 
+    invoke GetTickCount
+
+    mov dword[timer],eax
     stdcall CPUpush,0
     stdcall CPUpush,3
+    stdcall CPUpop,0
+    ;stdcall DrawHeader
+    ;stdcall drawCPU
 
-    stdcall drawCPU
+    ;  main loop
+    ;mov ecx,10000
+    ;time_loop:
+        ;.if dword[time] = 0
+            stdcall drawCPU
+            stdcall DrawHeader
+            stdcall DrawMidPart
+        ;.endif
+        ;stdcall timeupdate
+        ;stdcall generateIO
+        ;loop time_loop
+        ;jmp time_loop
     invoke  ReleaseDC, [hwnd], [hDC]
 
     invoke  ShowWindow, [hwnd], SW_SHOWNORMAL
@@ -212,19 +244,10 @@ proc start
 
     ; timer start
 
-    invoke GetTickCount
-
-    mov dword[timer],eax
+    
     ;
 
-    ; main loop
-    ;mov ecx,100
-   ; time_loop:
-        stdcall drawCPU
-        stdcall timeupdate
-        ;stdcall generateIO
-        ;loop time_loop
-        ;jmp time_loop
+    
 
     msg_loop:
         invoke GetMessage, msg, NULL, 0, 0
@@ -265,6 +288,8 @@ proc WindowProc uses ebx esi edi, hwnd, wmsg, wparam, lparam
 endp
 
 
+
+
 proc realloc
     mov eax, dword[Real_process_size]
     shl eax,1
@@ -276,7 +301,7 @@ endp
 
 
 proc deleteprocess
-    mov esi,dword[processes]
+    mov esi, dword[processes]
     mov word [esi+edi],-1
     ;;;;;;;;;;;;;;;;; call delete from ram and disk
     ret
@@ -312,29 +337,46 @@ endp
 
 
 proc timeupdate
+    local newtimetick dd 0
     mov esi,dword[processes]
     invoke GetTickCount
-    push eax
+    mov dword [newtimetick],eax
     sub eax, dword [timer]
-    cmp eax,TIME_FOR_NEW_PROCESS
+    add dword[time], eax
+    .if [time] > 1000
+        inc dword[seconds]
+        inc dword[score]
+        mov [time],0
+        .if dword[seconds] = 60
+            inc dword[minutes]
+            mov dword[seconds],0
+            .if dword[minutes] = 60
+                inc dword[hours]
+                mov dword[minutes],0
+            .endif
+        .endif
+    .endif
+    mov eax, dword[newtimetick]
+    add dword[newprocesstime],eax
+    cmp [newprocesstime],TIME_FOR_NEW_PROCESS
     jb loop_prepare
-    
+        mov dword[newprocesstime],0
         ; call create new process
         stdcall newprocess
     
     loop_prepare:
     pop eax
+    mov dword[timer],eax
     mov edi,0 ; offset in process array
     time_loopstart:
         .if word [esi+edi] <> -1
             .if word [esi+edi+executed_offset] <> 0
                 mov dword [esi+edi+downtime_tick_offset],0
-                .if dword [esi+edi+uptime_tick_offset] > 0
-                    push eax
+                .if dword [esi+edi+uptime_tick_offset] > 0 ; need to check hungstage
+                    mov eax, dword [newprocesstime]
                     sub eax,dword [esi+edi+uptime_tick_offset]
                     add word [esi+edi+uptime_offset],ax
                     add word [esi+edi+finaltime_offset],ax
-                    pop eax
                     .if word [esi+edi+uptime_offset] >= TIME_FOR_REFRESH
                         mov word [esi+edi+hung_stage_offset],1
                         mov word [esi+edi+uptime_offset],0
@@ -343,14 +385,15 @@ proc timeupdate
                         stdcall deleteprocess
                     .endif
                 .endif
+                mov eax, dword [newprocesstime]
                 mov dword [esi+edi+uptime_tick_offset],eax
             .else 
                 mov dword [esi+edi+uptime_tick_offset],0 
                 .if dword [esi+edi+downtime_tick_offset] > 0
-                    push eax
+                    mov eax, dword [newprocesstime]
                     sub eax, dword [esi+edi+downtime_tick_offset]
                     add word [esi+edi+downtime_offset],ax
-                    pop eax
+                    
                     .if word [esi+edi+downtime_offset] >= TIME_FOR_NEXT_STAGE
                         add word [esi+edi+hung_stage_offset],1
                         .if word [esi+edi+hung_stage_offset] = 7
@@ -367,6 +410,7 @@ proc timeupdate
                         mov word [esi+edi+downtime_offset],0
                     .endif
                 .endif
+                mov eax, dword [newprocesstime]
                 mov dword [esi+edi+downtime_tick_offset],eax
             .endif
         .endif
@@ -386,8 +430,7 @@ proc GetEdi, name: dword, offset: dword
     ret
 endp
 
-proc strlen, str: dword
-    push ecx
+proc strlen uses ecx, str: dword
     mov esi, [str]
     xor ecx, ecx
     .startloop:
@@ -397,19 +440,18 @@ proc strlen, str: dword
         jmp .startloop
     .loopend:
     mov eax,ecx
-    pop ecx
     ret
 endp
 
-proc concatinate, str1: dword, str2: dword, resultbuffer: dword, needclean: dword
+proc concatinate uses edi esi ecx ebx, str1: dword, str2: dword, resultbuffer: dword, needclean: dword
 
     .if [needclean] = 1
         stdcall strclean, [resultbuffer]
     .endif
 
     stdcall strlen, [str1]
-    mov edi, [resultbuffer]
     mov ecx,eax
+    mov edi, [resultbuffer]
     rep movsb
     
     mov ebx,eax ; first len
@@ -423,19 +465,13 @@ proc concatinate, str1: dword, str2: dword, resultbuffer: dword, needclean: dwor
 ret
 endp
 
-proc strclean, str: dword
-    push esi
-    push ecx
-    push edi
+proc strclean uses esi edi ecx, str: dword
     stdcall strlen, [str]
     mov ecx,eax
     mov edi, [str]        
     mov eax, 0                      
     cld                           
     rep stosd 
-    pop edi
-    pop ecx
-    pop esi
     ret
 endp
 proc deletefromdiskram, index: dword, offset: dword, arr: dword

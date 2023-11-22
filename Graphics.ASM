@@ -1,14 +1,73 @@
+proc DrawHeader
+
+    
+    invoke CreateSolidBrush, 0x00969817
+    mov [hBrush], eax
+    invoke CreatePen, PS_SOLID, 2, 0x00969817
+    mov [hPen], eax
+    invoke SelectObject, [hDC], [hBrush]
+    invoke SelectObject, [hDC], [hPen]
+    invoke Rectangle, [hDC],margin_left, margin_top,margin_left+square_size*2+cpu_cpu_gap,margin_top+header_height
+    stdcall strclean, buffer
+    mov eax, dword[NeedIOCount]
+    stdcall IntToStr, eax,buffer,0
+    stdcall concatinate, IOEVENTS,buffer,result_buffer,1
+    stdcall concatinate, result_buffer,IOEVENTSEND,result_buffer,0
+    stdcall MyDrawText, 0x00969817,0x00000000,20,margin_left, margin_top,margin_left+square_size*2+cpu_cpu_gap,margin_top+header_height,result_buffer,DT_SINGLELINE+DT_CENTER+DT_VCENTER
+
+
+    stdcall concatinate, UPTIME,space,result_buffer,1
+    stdcall concatinate, result_buffer,COLOMN,result_buffer,0
+    stdcall concatinate, result_buffer,space,result_buffer,0
+    stdcall strclean, buffer
+     
+    .if dword[hours] < 10
+        stdcall concatinate, result_buffer,ZERO,result_buffer,0
+    .endif
+    mov eax,dword[hours]
+    stdcall IntToStr, eax,buffer,0
+    stdcall concatinate, result_buffer,buffer,result_buffer,0
+    stdcall concatinate, result_buffer,COLOMN,result_buffer,0
+    stdcall strclean, buffer
+    
+    .if dword[minutes] < 10
+        stdcall concatinate, result_buffer,ZERO,result_buffer,0
+    .endif
+    mov eax, dword[minutes]
+    stdcall IntToStr, eax,buffer,0
+    stdcall concatinate, result_buffer,buffer,result_buffer,0
+    stdcall concatinate, result_buffer,COLOMN,result_buffer,0
+    stdcall strclean, buffer
+    .if dword[seconds] < 10
+        stdcall concatinate, result_buffer,ZERO,result_buffer,0
+    .endif
+    mov eax, dword[seconds]
+    stdcall IntToStr, eax,buffer,0
+    stdcall concatinate, result_buffer,buffer,result_buffer,0
+    stdcall MyDrawText, 0x00000000,0x00FFFFFF,20,margin_left, margin_top,left_header_width,margin_top+header_height,result_buffer,DT_RIGHT+DT_SINGLELINE+DT_VCENTER
+    stdcall strclean, result_buffer
+
+    stdcall concatinate, SCORE,space,result_buffer,1
+    stdcall concatinate, result_buffer,COLOMN,result_buffer,0
+    stdcall concatinate, result_buffer,space,result_buffer,0
+    stdcall strclean, buffer
+    mov eax, dword[score]
+    stdcall IntToStr, eax,buffer,0
+    stdcall concatinate, result_buffer,buffer,result_buffer,0
+    stdcall MyDrawText, 0x00000000,0x00FFFFFF,20,left_header_width, margin_top,header_width,margin_top+header_height,result_buffer,DT_SINGLELINE+DT_CENTER+DT_VCENTER
+    stdcall strclean, result_buffer
+    
+ret
+endp
+
 proc drawCPU
 
     local x1 dd margin_left
-    local y1 dd margin_top+header_height+gap
+    local y1 dd margin_top+header_height+header_cpu_gap
     local x2 dd margin_left+square_size
-    local y2 dd margin_top+header_height+gap+square_size
-    local textx1 dd ?
-    local textx2 dd ?
-    local texty1 dd ?
-    local texty2 dd ?
-    local current_color dd ?
+    local y2 dd margin_top+header_height+header_cpu_gap+square_size
+    
+    ;local current_color dd ?
     ;local current_name dd ?
     mov esi, dword[CPU]
     mov edi,0
@@ -19,56 +78,18 @@ proc drawCPU
     .loopstart:
         .if word[esi+edi+process_on_CPU_offset] <> -1
             movzx eax, word[esi+edi+process_on_CPU_offset]
-            push esi
-            push edi
-            mov esi, dword[processes]
-            stdcall GetEdi, eax,process_offset
-            movzx eax, word[esi+edi+hung_stage_offset]
-            imul eax,4
-            push edi
-            mov edi, Colorarray         
-            add edi,eax
-            mov eax,[edi]
-            mov [current_color], eax
-            invoke CreateSolidBrush, eax
-            pop edi
-            mov [hBrush], eax
-            invoke SelectObject, [hDC], [hBrush]
-            ;invoke CreatePen, PS_SOLID, 2, [current_color]
-            ;mov [hPen], eax
-            invoke Rectangle, [hDC], [x1],[y1],[x2],[y2]
-
-            ; draw text
-            mov eax, [x1]
-            add eax,text_margin_left
-            mov [textx1],eax
-            mov eax, [x2]
-            sub eax,text_margin_right
-            mov [textx2],eax
-            mov eax, [y1]
-            add eax,text_margin_top
-            mov [texty1],eax
-            mov eax, [y2]
-            sub eax,text_margin_bottom
-            mov [texty2],eax
+            stdcall DrawOneProcess,eax ,[x1],[y1],[x2],[y2]
             
-            stdcall strclean, buffer
-            movzx eax, word[esi+edi]
-            ;mov [current_name],eax
-            stdcall IntToStr, eax,buffer,0
-            stdcall concatinate, PID,space,result_buffer,1
-            stdcall concatinate, result_buffer,buffer,result_buffer,0
-            stdcall MyDrawText, [current_color],0x00000000,20,[textx1],[texty1],[textx2],[texty2],result_buffer,DT_LEFT
-            ;
-            invoke CreateSolidBrush, 0x00000000
-            mov [hBrush], eax
-            invoke SelectObject, [hDC], [hBrush]
-            pop edi
-            pop esi
 
         .else
             invoke SelectObject, [hDC], [hPen]
-            invoke Rectangle, [hDC], [x1],[y1],[x2],[y2]    
+            invoke Rectangle, [hDC], [x1],[y1],[x2],[y2]
+            stdcall strclean, buffer
+            movzx eax, word[esi+edi]
+            stdcall IntToStr, eax,buffer,0
+            stdcall concatinate, CPUNAME,space,result_buffer,1
+            stdcall concatinate, result_buffer,buffer,result_buffer,0
+            stdcall MyDrawText, 0x00000000,0x00FFFFFF,20,[x1], [y1],[x2],[y2],result_buffer,DT_SINGLELINE+DT_CENTER+DT_VCENTER    
         .endif
 
         add [x1],square_size+cpu_cpu_gap
@@ -80,6 +101,73 @@ proc drawCPU
 
 ret
 endp
+
+
+proc DrawOneProcess uses edi esi ebx edx ecx, procname: dword, x1 : dword, y1: dword, x2: dword, y2: dword
+    local current_color dd ?
+    local textx1 dd ?
+    local textx2 dd ?
+    local texty1 dd ?
+    local texty2 dd ?
+    mov esi, dword[processes]
+    stdcall GetEdi, [procname],process_offset
+    movzx eax, word[esi+edi+hung_stage_offset]
+    imul eax,4
+    push edi
+    mov edi, Colorarray         
+    add edi,eax
+    mov eax,[edi]
+    mov [current_color], eax
+    invoke CreateSolidBrush, eax
+    pop edi
+    mov [hBrush], eax
+    invoke CreatePen, PS_SOLID, 2, [current_color]
+    mov [hPen], eax
+    ;invoke SelectObject, [hDC], [hBrush]
+    invoke SelectObject, [hDC], [hPen]
+    invoke SelectObject, [hDC], [hBrush]
+    invoke Rectangle, [hDC], [x1],[y1],[x2],[y2]
+    invoke CreatePen, PS_SOLID, 2, 0x00FFFFFF
+    mov [hPen], eax
+    ; draw text
+    mov eax, [x1]
+    add eax,text_margin_left
+    mov [textx1],eax
+    mov eax, [x2]
+    sub eax,text_margin_right
+    mov [textx2],eax
+    mov eax, [y1]
+    add eax,text_margin_top
+    mov [texty1],eax
+    mov eax, [y2]
+    sub eax,text_margin_bottom
+    mov [texty2],eax
+    
+    stdcall strclean, buffer
+    movzx eax, word[esi+edi]
+    ;mov [current_name],eax
+    stdcall IntToStr, eax,buffer,0
+    stdcall concatinate, PID,space,result_buffer,1
+    stdcall concatinate, result_buffer,buffer,result_buffer,0
+    stdcall MyDrawText, [current_color],0x00000000,20,[textx1],[texty1],[textx2],[texty2],result_buffer,DT_LEFT
+    ;
+    invoke CreateSolidBrush, 0x00000000
+    mov [hBrush], eax
+    invoke SelectObject, [hDC], [hBrush]
+
+
+ret
+endp
+
+
+proc DrawMidPart
+    stdcall MyDrawText, 0x00000000,0x00FFFFFF,40,margin_left+5,margin_top+header_height+header_cpu_gap+square_size+cpu_middle_gap ,left_header_width,margin_top+header_height+header_cpu_gap+square_size+cpu_middle_gap+header_height,IDLE,DT_LEFT
+    stdcall MyDrawText, 0x00000000,0x00FFFFFF,40,left_header_width,margin_top+header_height+header_cpu_gap+square_size+cpu_middle_gap ,header_width,margin_top+header_height+header_cpu_gap+square_size+cpu_middle_gap+header_height,MEMPAGES,DT_LEFT
+
+ret
+endp
+
+
 
 proc MyDrawText, bgcolor: dword,textcolor: dword,fontsize: dword,x1: dword, y1: dword, x2: dword, y2: dword, text: dword, pos: dword
 
