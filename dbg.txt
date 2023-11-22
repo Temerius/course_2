@@ -92,3 +92,11 @@ proc drawCPU
 
 ret
 endp
+40215c
+4023ba
+40216e
+
+40283b
+
+
+2c4b998

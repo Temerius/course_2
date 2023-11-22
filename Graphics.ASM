@@ -149,7 +149,7 @@ proc DrawOneProcess uses edi esi ebx edx ecx, procname: dword, x1 : dword, y1: d
     stdcall IntToStr, eax,buffer,0
     stdcall concatinate, PID,space,result_buffer,1
     stdcall concatinate, result_buffer,buffer,result_buffer,0
-    stdcall MyDrawText, [current_color],0x00000000,20,[textx1],[texty1],[textx2],[texty2],result_buffer,DT_LEFT
+    stdcall MyDrawText, [current_color],0x00000000,15,[textx1],[texty1],[textx2],[texty2],result_buffer,DT_LEFT
     ;
     invoke CreateSolidBrush, 0x00000000
     mov [hBrush], eax
@@ -163,9 +163,46 @@ endp
 proc DrawMidPart
     stdcall MyDrawText, 0x00000000,0x00FFFFFF,40,margin_left+5,margin_top+header_height+header_cpu_gap+square_size+cpu_middle_gap ,left_header_width,margin_top+header_height+header_cpu_gap+square_size+cpu_middle_gap+header_height,IDLE,DT_LEFT
     stdcall MyDrawText, 0x00000000,0x00FFFFFF,40,left_header_width,margin_top+header_height+header_cpu_gap+square_size+cpu_middle_gap ,header_width,margin_top+header_height+header_cpu_gap+square_size+cpu_middle_gap+header_height,MEMPAGES,DT_LEFT
+ret
+endp
+
+
+proc DrawProcesses
+    local proc_in_raw dd 0
+    local x1 dd margin_left
+    local y1 dd margin_top+header_height+header_cpu_gap+square_size+cpu_middle_gap+header_height+middle_process_gap
+    local x2 dd margin_left+square_size
+    local y2 dd margin_top+header_height+header_cpu_gap+square_size+cpu_middle_gap+header_height+middle_process_gap+square_size
+    
+    mov esi, dword[processes]
+    mov edi,0
+    .loopstart:
+        .if word[esi+edi+number_in_CPU_offset] = -1
+            movzx eax, word[esi+edi]
+            stdcall DrawOneProcess,eax ,[x1],[y1],[x2],[y2]
+            inc dword[proc_in_raw]
+            .if dword[proc_in_raw] = proc_in_raw_count
+                mov dword[x1], margin_left
+                mov dword[x2], margin_left+square_size
+                add dword[y1], square_size+proc_proc_gap
+                add dword[y2], square_size+proc_proc_gap
+                mov dword[proc_in_raw],0
+            .else
+                add dword[x1],square_size+proc_proc_gap
+                add dword[x2],square_size+proc_proc_gap
+            .endif
+        .endif
+        
+        
+        
+
+        add edi,process_offset
+        cmp edi, dword[Process_size]
+        jb .loopstart
 
 ret
 endp
+
 
 
 

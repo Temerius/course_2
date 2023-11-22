@@ -38,7 +38,7 @@ section '.data' data readable writeable
     CPU_count dw 4  ; variable for cpu count 
     RAMPages_count dw 32 ; variable for rampages count
     DISKPages_count dw 16 ; variable for diskpages count
-    Process_count dw 8 ; variable for start process count 
+    Process_count dw 16 ; variable for start process count 
     Process_size dd ? ; variable for the size off the process array
     Real_process_size dd ?
     Random_probability dw 20
@@ -111,9 +111,14 @@ section '.data' data readable writeable
     margin_bottom = 10
 
     text_margin_top = 10
-    text_margin_left = 45
+    text_margin_left = 30
     text_margin_right = 0
-    text_margin_bottom = 60
+    text_margin_bottom = 45
+
+    textpage_margin_top = 5
+    textpage_margin_left = 2
+    textpage_margin_right = 0
+    textpage_margin_bottom = 15
 
     header_height = 40
     header_width = 1700
@@ -125,14 +130,20 @@ section '.data' data readable writeable
     cpu_cpu_gap = 5
     header_cpu_gap = 15
     cpu_middle_gap = 15
-    square_size = 100
+    middle_process_gap = 15
+    proc_proc_gap = 5
+    page_page_gap = 5
+    square_size = 75
 
+    page_width = 40
+    page_height = 30
+
+    proc_in_raw_count = 7
+    pages_in_raw_count = 16
   
     buffer db 16 dup (?)
     Arial db 'Arial', 0
 
-   
-   
     result_buffer db 256 dup (?) ; Буфер для объединенной строки
     PID db 'PID',0
     IOEVENTS db 'I/O EVENTS (',0
@@ -220,7 +231,11 @@ proc start
     mov dword[timer],eax
     stdcall CPUpush,0
     stdcall CPUpush,3
+    stdcall CPUpush,1
+    stdcall CPUpush,8
+    stdcall CPUpush,9
     stdcall CPUpop,0
+    stdcall CPUpop,2
     ;stdcall DrawHeader
     ;stdcall drawCPU
 
@@ -231,6 +246,8 @@ proc start
             stdcall drawCPU
             stdcall DrawHeader
             stdcall DrawMidPart
+            stdcall DrawProcesses
+            stdcall DrawRam
         ;.endif
         ;stdcall timeupdate
         ;stdcall generateIO
@@ -272,8 +289,240 @@ proc start
     ret
 endp
 
+proc addCPU
+    mov esi,dword[CPU]
+    mov word [esi+edi],cx
+    mov word [esi+edi+process_on_CPU_offset], -1
+    
+    ret
+endp
+
+proc addRAM
+    mov esi,dword[RAM]
+    mov word [esi+edi],cx
+    mov word [esi+edi+process_on_RAM_offset], -1
+    
+    ret
+endp
+
+proc addDISK
+    mov esi,dword[DISK]
+    mov word [esi+edi],cx
+    mov word [esi+edi+process_on_DISK_offset], -1
+    
+    ret
+endp
+
+proc addprocess
+    mov esi, dword[processes]
+    mov dx, word[current_name]
+    mov word [esi+edi],dx
+    inc dx
+    mov word [current_name],dx
+
+    mov edx,0
+    rdrand eax
+    div [Random_RAMdelimiter]
+    inc edx
+    mov word [esi+edi+number_in_CPU_offset], -1
+    mov word [esi+edi+cells_count_offset],dx
+    mov word [esi+edi+hung_stage_offset],1
+    mov word [esi+edi+downtime_offset],0
+    mov word [esi+edi+uptime_offset],0
+    mov word [esi+edi+finaltime_offset],0
+    mov word [esi+edi+need_IO_offset],0
+    mov dword [esi+edi+downtime_tick_offset],0
+    mov dword [esi+edi+uptime_tick_offset],0
+    mov word [esi+edi+executed_offset],0
+    mov word [esi+edi+was_on_CPU_offset],0
+    ret
+endp
+
+proc initialisation, a: DWORD
+    ; process array size
+    mov ax, word [Process_count]
+    mov bx, process_offset
+    imul ax,bx
+    ;
+
+    movzx eax,ax
+    mov dword [Process_size],eax
 
 
+    shl eax,1 ;expand array size x2
+
+    mov dword [Real_process_size],eax
+    mov ebx,eax
+    invoke HeapAlloc, [a],0,ebx
+    mov dword [processes],eax
+    mov esi,eax       ;;;;;;;;;;;;;
+
+    mov edi,0 ; offset in process array
+
+    ; filling the array of processes
+    ini_loopstart:
+        stdcall addprocess
+        add edi,process_offset
+        cmp edi, dword [Process_size]
+        jne ini_loopstart
+
+    ;
+    
+
+
+    ; ini for CPU
+    mov ax, word [CPU_count]
+    mov bx, CPU_offset
+    imul ax,bx
+    movzx eax,ax
+    mov dword [CPU_size],eax
+    mov ebx,eax
+    invoke HeapAlloc, [a],0,ebx
+    mov dword [CPU],eax
+    mov esi,eax       ;;;;;;;;;;;;;
+    mov edi,0 ; offset in CPU array
+    mov cx,0
+    ; filling the array of CPUs
+    inicpu_loopstart:
+        stdcall addCPU
+        inc cx
+        add edi,CPU_offset
+        cmp edi, dword [CPU_size]
+        jne inicpu_loopstart
+
+
+    ; ini for RAM
+    mov ax, word [RAMPages_count]
+    mov bx, RAM_offset
+    imul ax,bx
+    movzx eax,ax
+    mov dword [RAM_size],eax
+    mov ebx,eax
+    invoke HeapAlloc, [a],0,ebx
+    mov dword [RAM],eax
+    mov esi,eax       ;;;;;;;;;;;;;
+
+    mov edi,0 ; offset in RAM array
+    mov cx,0
+    ; filling the array of RAM
+    iniram_loopstart:
+        stdcall addRAM
+        inc cx
+        add edi,RAM_offset
+        cmp edi, dword [RAM_size]
+        jne iniram_loopstart
+
+    ; ini for DISK
+    mov ax, word [DISKPages_count]
+    mov bx, DISK_offset
+    imul ax,bx
+    movzx eax,ax
+    mov dword [DISK_size],eax
+    mov ebx,eax
+    invoke HeapAlloc, [a],0,ebx
+    mov dword [DISK],eax
+    mov esi,eax       ;;;;;;;;;;;;;
+
+    mov edi,0 ; offset in DISK array
+    mov cx,0
+    ; filling the array of DISK
+    inidisk_loopstart:
+        stdcall addDISK
+        inc cx
+        add edi,DISK_offset
+        cmp edi, dword [DISK_size]
+        jne inidisk_loopstart
+ret
+endp
+proc DrawRam
+    local proc_in_raw dd 0
+    local x1 dd left_header_width
+    local y1 dd margin_top+header_height+header_cpu_gap+square_size+cpu_middle_gap+header_height+middle_process_gap
+    local x2 dd left_header_width+page_width
+    local y2 dd margin_top+header_height+header_cpu_gap+square_size+cpu_middle_gap+header_height+middle_process_gap+page_height
+    local page_in_raw dd 0
+    mov esi, dword[RAM]
+    mov edi,0
+    .loopstart:
+        .if word[esi+edi+process_on_RAM_offset] <> -1
+            movzx eax, word[esi+edi+process_on_RAM_offset]
+            stdcall DrawOnePage, eax, [x1],[y1],[x2],[y2]
+            ;stdcall DrawOneProcess,eax ,[x1],[y1],[x2],[y2]
+            inc dword[page_in_raw]
+            .if dword[page_in_raw] = pages_in_raw_count
+                mov dword[x1], left_header_width
+                mov dword[x2], left_header_width+page_width
+                add dword[y1], page_height+page_page_gap
+                add dword[y2], page_height+page_page_gap
+                mov dword[page_in_raw],0
+            .else
+                add dword[x1],page_width+page_page_gap
+                add dword[x2],page_width+page_page_gap
+            .endif
+        .endif
+
+        add edi,RAM_offset
+        cmp edi, dword[RAM_size]
+        jb .loopstart
+
+
+ret
+endp
+
+proc DrawOnePage uses edi esi ecx ebx edx,procname: dword, x1 : dword, y1: dword, x2: dword, y2: dword
+    local textx1 dd ?
+    local textx2 dd ?
+    local texty1 dd ?
+    local texty2 dd ?
+    local currentcolor dd ?
+    mov esi, dword[processes]
+    stdcall GetEdi, [procname],process_offset
+    .if word[edi+esi+number_in_CPU_offset] = -1
+        mov dword[currentcolor],0x00808080 
+        invoke CreateSolidBrush, dword[currentcolor]
+        mov [hBrush], eax
+        invoke CreatePen, PS_SOLID, 2, dword[currentcolor]
+        mov [hPen], eax
+        invoke SelectObject, [hDC], [hPen]
+        invoke SelectObject, [hDC], [hBrush]
+        invoke Rectangle, [hDC],[x1],[y1],[x2],[y2]
+
+    .else
+        mov dword[currentcolor],0x00FFFFFF 
+        invoke CreateSolidBrush, dword[currentcolor]
+        mov [hBrush], eax
+        invoke CreatePen, PS_SOLID, 2, dword[currentcolor]
+        mov [hPen], eax
+    .endif
+    
+    invoke SelectObject, [hDC], [hPen]
+    invoke SelectObject, [hDC], [hBrush]
+    invoke Rectangle, [hDC],[x1],[y1],[x2],[y2]
+
+
+    ; draw text
+    mov eax, [x1]
+    add eax,textpage_margin_left
+    mov [textx1],eax
+    mov eax, [x2]
+    sub eax,textpage_margin_right
+    mov [textx2],eax
+    mov eax, [y1]
+    add eax,textpage_margin_top
+    mov [texty1],eax
+    mov eax, [y2]
+    sub eax,textpage_margin_bottom
+    mov [texty2],eax
+    
+    stdcall strclean, buffer
+    movzx eax, word[esi+edi]
+    stdcall IntToStr, eax,buffer,0
+    stdcall concatinate, PID,space,result_buffer,1
+    stdcall concatinate, result_buffer,buffer,result_buffer,0
+    stdcall MyDrawText, dword[currentcolor],0x00000000,10,[textx1],[texty1],[textx2],[texty2],result_buffer,DT_LEFT+DT_SINGLELINE+DT_VCENTER
+    
+ret
+endp
 proc WindowProc uses ebx esi edi, hwnd, wmsg, wparam, lparam
   cmp [wmsg], WM_DESTROY
   je .wmdestroy
@@ -484,7 +733,7 @@ endp
 
 ; comparator2 push on 1 - ram, 2 - disk
 ; comparator1 if <> -1 - index of ram or disk to delete; depends on comparator2 
-proc diskrampush, process_topush: dword , comparator1: dword, comparator2: dword
+proc diskrampush uses edi esi ecx, process_topush: dword , comparator1: dword, comparator2: dword
     locals
         arr1 dd ?
         size1 dd ?
@@ -539,7 +788,7 @@ proc diskrampush, process_topush: dword , comparator1: dword, comparator2: dword
     ret
 endp
 
-proc RAMpush_process, process_topush: dword
+proc RAMpush_process uses ecx edi esi, process_topush: dword
     locals
         currentcount dw 0
     endl
