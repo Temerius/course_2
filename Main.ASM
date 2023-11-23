@@ -96,14 +96,14 @@ section '.data' data readable writeable
     myheap dd 0 ; heap from getprocessheap
     
     
-    TIME_FOR_NEW_PROCESS=20000
+    TIME_FOR_NEW_PROCESS=10000
     TIME_FOR_NEXT_STAGE=6000
-    TIME_FOR_BEREADY=25000
+    TIME_FOR_BEREADY=30000
     TIME_FOR_REFRESH=4000
 
     ;FROOOOOOOOOOOOOOOOOOOOONT
 
-    Colorarray dd 0x00009999,0x0000CC00,0x00FFFF00,0x00FFB700,0x00FF0000,0x00A60000,0x004f0500
+    Colorarray dd 0x00009999,0x0000CC00,0x0000FFFF,0x0000B7FF,0x000000FF,0x000000A6,0x0000054f
 
     margin_top = 20
     margin_left = 30
@@ -131,7 +131,10 @@ section '.data' data readable writeable
     header_cpu_gap = 15
     cpu_middle_gap = 15
     middle_process_gap = 15
-    proc_proc_gap = 5
+    
+    proc_foottername_gap = 30
+    foottername_footterproc_gap = 5
+
     page_page_gap = 5
     square_size = 75
 
@@ -153,13 +156,22 @@ section '.data' data readable writeable
     CPUNAME db 'CPU',0
     IDLE db 'Idle Processes :',0
     MEMPAGES db 'Memory Pages in RAM :',0
-
+    PAGEQIUTS db 'User Ragequits (',0
+    SLASH db ' / 10) :'
     COLOMN db ':',0
     space db ' ',0
     ZERO db '0',0
 
-     ;Gemoji db 'D:\BSUIR\ASSembly\course_2\grinning_face_emoji.bmp', 0
-    Gemoji db 'D:\BSUIR\ASSembly\course_2\grinning_face_emoji2.bmp', 0
+    PAGEQIUTS_X1 dd margin_left
+    PAGEQIUTS_Y1 dd margin_top+header_height+header_cpu_gap+square_size+cpu_middle_gap+header_height+middle_process_gap+square_size*7+cpu_cpu_gap*6
+    PAGEQIUTS_X2 dd margin_left+square_size
+    PAGEQIUTS_Y2 dd margin_left
+
+    ;Gemoji db 'D:\BSUIR\ASSembly\course_2\grinning_face_emoji.bmp', 0
+    ;Gemoji db 'D:\BSUIR\ASSembly\course_2\grinning_face_emoji2.bmp', 0
+    ;Gemoji db 'D:\BSUIR\ASSembly\course_2\images\grinning_face_emoji.bmp', 0
+    Gemoji db 'D:\BSUIR\ASSembly\course_2\images\cold_face_emoji.bmp', 0
+    ;Gemoji db 'D:\BSUIR\ASSembly\course_2\images\cold_face_emoji.png', 0
     ;Gemoji db 'i1.jpg',0
 
 section '.text' code readable executable
@@ -227,31 +239,47 @@ proc start
     stdcall initialisation,[myheap]
 
     invoke GetTickCount
-
     mov dword[timer],eax
+
     stdcall CPUpush,0
     stdcall CPUpush,3
     stdcall CPUpush,1
     stdcall CPUpush,8
     stdcall CPUpush,9
-    stdcall CPUpop,0
     stdcall CPUpop,2
-    ;stdcall DrawHeader
-    ;stdcall drawCPU
 
     ;  main loop
-    ;mov ecx,10000
-    ;time_loop:
+
+    fnop
+    mov ecx,1000000
+    time_loop:
         ;.if dword[time] = 0
+            push ecx
+            pusha
             stdcall drawCPU
+            popa
+            pusha
+            stdcall isexecuted
+            popa
+            pusha
             stdcall DrawHeader
+            popa
+            pusha
             stdcall DrawMidPart
+            popa
+            pusha
             stdcall DrawProcesses
+            popa
+            pusha
             stdcall DrawRam
+            popa
+            pop ecx
         ;.endif
-        ;stdcall timeupdate
+        pusha
+        stdcall timeupdate
+        popa
         ;stdcall generateIO
-        ;loop time_loop
+        loop time_loop
         ;jmp time_loop
     invoke  ReleaseDC, [hwnd], [hDC]
 
@@ -289,240 +317,6 @@ proc start
     ret
 endp
 
-proc addCPU
-    mov esi,dword[CPU]
-    mov word [esi+edi],cx
-    mov word [esi+edi+process_on_CPU_offset], -1
-    
-    ret
-endp
-
-proc addRAM
-    mov esi,dword[RAM]
-    mov word [esi+edi],cx
-    mov word [esi+edi+process_on_RAM_offset], -1
-    
-    ret
-endp
-
-proc addDISK
-    mov esi,dword[DISK]
-    mov word [esi+edi],cx
-    mov word [esi+edi+process_on_DISK_offset], -1
-    
-    ret
-endp
-
-proc addprocess
-    mov esi, dword[processes]
-    mov dx, word[current_name]
-    mov word [esi+edi],dx
-    inc dx
-    mov word [current_name],dx
-
-    mov edx,0
-    rdrand eax
-    div [Random_RAMdelimiter]
-    inc edx
-    mov word [esi+edi+number_in_CPU_offset], -1
-    mov word [esi+edi+cells_count_offset],dx
-    mov word [esi+edi+hung_stage_offset],1
-    mov word [esi+edi+downtime_offset],0
-    mov word [esi+edi+uptime_offset],0
-    mov word [esi+edi+finaltime_offset],0
-    mov word [esi+edi+need_IO_offset],0
-    mov dword [esi+edi+downtime_tick_offset],0
-    mov dword [esi+edi+uptime_tick_offset],0
-    mov word [esi+edi+executed_offset],0
-    mov word [esi+edi+was_on_CPU_offset],0
-    ret
-endp
-
-proc initialisation, a: DWORD
-    ; process array size
-    mov ax, word [Process_count]
-    mov bx, process_offset
-    imul ax,bx
-    ;
-
-    movzx eax,ax
-    mov dword [Process_size],eax
-
-
-    shl eax,1 ;expand array size x2
-
-    mov dword [Real_process_size],eax
-    mov ebx,eax
-    invoke HeapAlloc, [a],0,ebx
-    mov dword [processes],eax
-    mov esi,eax       ;;;;;;;;;;;;;
-
-    mov edi,0 ; offset in process array
-
-    ; filling the array of processes
-    ini_loopstart:
-        stdcall addprocess
-        add edi,process_offset
-        cmp edi, dword [Process_size]
-        jne ini_loopstart
-
-    ;
-    
-
-
-    ; ini for CPU
-    mov ax, word [CPU_count]
-    mov bx, CPU_offset
-    imul ax,bx
-    movzx eax,ax
-    mov dword [CPU_size],eax
-    mov ebx,eax
-    invoke HeapAlloc, [a],0,ebx
-    mov dword [CPU],eax
-    mov esi,eax       ;;;;;;;;;;;;;
-    mov edi,0 ; offset in CPU array
-    mov cx,0
-    ; filling the array of CPUs
-    inicpu_loopstart:
-        stdcall addCPU
-        inc cx
-        add edi,CPU_offset
-        cmp edi, dword [CPU_size]
-        jne inicpu_loopstart
-
-
-    ; ini for RAM
-    mov ax, word [RAMPages_count]
-    mov bx, RAM_offset
-    imul ax,bx
-    movzx eax,ax
-    mov dword [RAM_size],eax
-    mov ebx,eax
-    invoke HeapAlloc, [a],0,ebx
-    mov dword [RAM],eax
-    mov esi,eax       ;;;;;;;;;;;;;
-
-    mov edi,0 ; offset in RAM array
-    mov cx,0
-    ; filling the array of RAM
-    iniram_loopstart:
-        stdcall addRAM
-        inc cx
-        add edi,RAM_offset
-        cmp edi, dword [RAM_size]
-        jne iniram_loopstart
-
-    ; ini for DISK
-    mov ax, word [DISKPages_count]
-    mov bx, DISK_offset
-    imul ax,bx
-    movzx eax,ax
-    mov dword [DISK_size],eax
-    mov ebx,eax
-    invoke HeapAlloc, [a],0,ebx
-    mov dword [DISK],eax
-    mov esi,eax       ;;;;;;;;;;;;;
-
-    mov edi,0 ; offset in DISK array
-    mov cx,0
-    ; filling the array of DISK
-    inidisk_loopstart:
-        stdcall addDISK
-        inc cx
-        add edi,DISK_offset
-        cmp edi, dword [DISK_size]
-        jne inidisk_loopstart
-ret
-endp
-proc DrawRam
-    local proc_in_raw dd 0
-    local x1 dd left_header_width
-    local y1 dd margin_top+header_height+header_cpu_gap+square_size+cpu_middle_gap+header_height+middle_process_gap
-    local x2 dd left_header_width+page_width
-    local y2 dd margin_top+header_height+header_cpu_gap+square_size+cpu_middle_gap+header_height+middle_process_gap+page_height
-    local page_in_raw dd 0
-    mov esi, dword[RAM]
-    mov edi,0
-    .loopstart:
-        .if word[esi+edi+process_on_RAM_offset] <> -1
-            movzx eax, word[esi+edi+process_on_RAM_offset]
-            stdcall DrawOnePage, eax, [x1],[y1],[x2],[y2]
-            ;stdcall DrawOneProcess,eax ,[x1],[y1],[x2],[y2]
-            inc dword[page_in_raw]
-            .if dword[page_in_raw] = pages_in_raw_count
-                mov dword[x1], left_header_width
-                mov dword[x2], left_header_width+page_width
-                add dword[y1], page_height+page_page_gap
-                add dword[y2], page_height+page_page_gap
-                mov dword[page_in_raw],0
-            .else
-                add dword[x1],page_width+page_page_gap
-                add dword[x2],page_width+page_page_gap
-            .endif
-        .endif
-
-        add edi,RAM_offset
-        cmp edi, dword[RAM_size]
-        jb .loopstart
-
-
-ret
-endp
-
-proc DrawOnePage uses edi esi ecx ebx edx,procname: dword, x1 : dword, y1: dword, x2: dword, y2: dword
-    local textx1 dd ?
-    local textx2 dd ?
-    local texty1 dd ?
-    local texty2 dd ?
-    local currentcolor dd ?
-    mov esi, dword[processes]
-    stdcall GetEdi, [procname],process_offset
-    .if word[edi+esi+number_in_CPU_offset] = -1
-        mov dword[currentcolor],0x00808080 
-        invoke CreateSolidBrush, dword[currentcolor]
-        mov [hBrush], eax
-        invoke CreatePen, PS_SOLID, 2, dword[currentcolor]
-        mov [hPen], eax
-        invoke SelectObject, [hDC], [hPen]
-        invoke SelectObject, [hDC], [hBrush]
-        invoke Rectangle, [hDC],[x1],[y1],[x2],[y2]
-
-    .else
-        mov dword[currentcolor],0x00FFFFFF 
-        invoke CreateSolidBrush, dword[currentcolor]
-        mov [hBrush], eax
-        invoke CreatePen, PS_SOLID, 2, dword[currentcolor]
-        mov [hPen], eax
-    .endif
-    
-    invoke SelectObject, [hDC], [hPen]
-    invoke SelectObject, [hDC], [hBrush]
-    invoke Rectangle, [hDC],[x1],[y1],[x2],[y2]
-
-
-    ; draw text
-    mov eax, [x1]
-    add eax,textpage_margin_left
-    mov [textx1],eax
-    mov eax, [x2]
-    sub eax,textpage_margin_right
-    mov [textx2],eax
-    mov eax, [y1]
-    add eax,textpage_margin_top
-    mov [texty1],eax
-    mov eax, [y2]
-    sub eax,textpage_margin_bottom
-    mov [texty2],eax
-    
-    stdcall strclean, buffer
-    movzx eax, word[esi+edi]
-    stdcall IntToStr, eax,buffer,0
-    stdcall concatinate, PID,space,result_buffer,1
-    stdcall concatinate, result_buffer,buffer,result_buffer,0
-    stdcall MyDrawText, dword[currentcolor],0x00000000,10,[textx1],[texty1],[textx2],[texty2],result_buffer,DT_LEFT+DT_SINGLELINE+DT_VCENTER
-    
-ret
-endp
 proc WindowProc uses ebx esi edi, hwnd, wmsg, wparam, lparam
   cmp [wmsg], WM_DESTROY
   je .wmdestroy
@@ -535,9 +329,6 @@ proc WindowProc uses ebx esi edi, hwnd, wmsg, wparam, lparam
   .finish:
   ret
 endp
-
-
-
 
 proc realloc
     mov eax, dword[Real_process_size]
@@ -606,6 +397,7 @@ proc timeupdate
         .endif
     .endif
     mov eax, dword[newtimetick]
+    sub eax, dword[timer]
     add dword[newprocesstime],eax
     cmp [newprocesstime],TIME_FOR_NEW_PROCESS
     jb loop_prepare
@@ -620,22 +412,24 @@ proc timeupdate
     time_loopstart:
         .if word [esi+edi] <> -1
             .if word [esi+edi+executed_offset] <> 0
-                mov dword [esi+edi+downtime_tick_offset],0
-                .if dword [esi+edi+uptime_tick_offset] > 0 ; need to check hungstage
-                    mov eax, dword [newprocesstime]
-                    sub eax,dword [esi+edi+uptime_tick_offset]
-                    add word [esi+edi+uptime_offset],ax
-                    add word [esi+edi+finaltime_offset],ax
-                    .if word [esi+edi+uptime_offset] >= TIME_FOR_REFRESH
-                        mov word [esi+edi+hung_stage_offset],1
-                        mov word [esi+edi+uptime_offset],0
+                ;.if word[esi+edi+hung_stage_offset] > 1
+                    mov dword [esi+edi+downtime_tick_offset],0
+                    .if dword [esi+edi+uptime_tick_offset] > 0 ; need to check hungstage
+                        mov eax, dword [timer]
+                        sub eax, dword [esi+edi+uptime_tick_offset]
+                        add word [esi+edi+uptime_offset],ax
+                        add word [esi+edi+finaltime_offset],ax
+                        .if word [esi+edi+uptime_offset] >= TIME_FOR_REFRESH
+                            mov word [esi+edi+hung_stage_offset],1
+                            mov word [esi+edi+uptime_offset],0
+                        .endif
+                        .if word [esi+edi+finaltime_offset] >= TIME_FOR_BEREADY
+                            stdcall deleteprocess
+                        .endif
                     .endif
-                    .if word [esi+edi+finaltime_offset] >= TIME_FOR_BEREADY
-                        stdcall deleteprocess
-                    .endif
-                .endif
-                mov eax, dword [newprocesstime]
-                mov dword [esi+edi+uptime_tick_offset],eax
+                    mov eax, dword [timer]
+                    mov dword [esi+edi+uptime_tick_offset],eax
+                ;.endif
             .else 
                 mov dword [esi+edi+uptime_tick_offset],0 
                 .if dword [esi+edi+downtime_tick_offset] > 0
@@ -667,7 +461,6 @@ proc timeupdate
         add edi,process_offset
         cmp edi, dword [Process_size]
         jne time_loopstart
-
 ret
 endp
 
@@ -884,12 +677,12 @@ proc generateIO
 ret
 endp
 
-proc isexecuted
+proc isexecuted uses edi esi ecx ebx edx
     mov edi,0
     mov esi, dword[CPU]
     .loopstart:
         ; get process name from cpu
-        movzx eax, word[esi+edi]
+        movzx eax, word[esi+edi+process_on_CPU_offset]
         .if ax <> -1
             stdcall isprocexecuted, eax
         .endif
@@ -898,9 +691,8 @@ proc isexecuted
         jb .loopstart
 ret
 endp
-proc isprocexecuted, process_tocheck: dword
-    push edi
-    push esi
+proc isprocexecuted uses edi esi ecx ebx edx, process_tocheck: dword
+
     stdcall GetEdi,[process_tocheck],process_offset
     mov esi, dword[processes]
     .if word[esi+edi+need_IO_offset] = 0
@@ -910,22 +702,18 @@ proc isprocexecuted, process_tocheck: dword
     .endif
 
     mov word[esi+edi+executed_offset],ax
-    pop esi
-    pop edi
+
 
 ret
 endp
 
-proc diskcheck, processname: dword
-    push ecx
-    push edi
-    push esi
+proc diskcheck uses edi esi ecx ebx edx, processname: dword
     
     mov ecx, dword[processname]
     mov edi,0
     mov esi, dword[DISK]
     .loopstart:
-        .if word[esi+edi+process_on_DISK_offset] = ecx
+        .if word[esi+edi+process_on_DISK_offset] = cx
             mov eax,0
             jmp .loopend
         .endif
@@ -935,9 +723,6 @@ proc diskcheck, processname: dword
     
     mov eax,1
     .loopend:
-    pop esi
-    pop edi
-    pop ecx
 
 ret
 

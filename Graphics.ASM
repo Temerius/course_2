@@ -1,6 +1,4 @@
 proc DrawHeader
-
-    
     invoke CreateSolidBrush, 0x00969817
     mov [hBrush], eax
     invoke CreatePen, PS_SOLID, 2, 0x00969817
@@ -8,6 +6,8 @@ proc DrawHeader
     invoke SelectObject, [hDC], [hBrush]
     invoke SelectObject, [hDC], [hPen]
     invoke Rectangle, [hDC],margin_left, margin_top,margin_left+square_size*2+cpu_cpu_gap,margin_top+header_height
+    invoke  DeleteObject, [hBrush]
+    invoke  DeleteObject, [hPen]
     stdcall strclean, buffer
     mov eax, dword[NeedIOCount]
     stdcall IntToStr, eax,buffer,0
@@ -62,6 +62,8 @@ endp
 
 proc drawCPU
 
+ 
+
     local x1 dd margin_left
     local y1 dd margin_top+header_height+header_cpu_gap
     local x2 dd margin_left+square_size
@@ -71,8 +73,6 @@ proc drawCPU
     ;local current_name dd ?
     mov esi, dword[CPU]
     mov edi,0
-    invoke CreatePen, PS_SOLID, 2, 0x00FFFFFF
-    mov [hPen], eax
 
    
     .loopstart:
@@ -82,7 +82,12 @@ proc drawCPU
             
 
         .else
+            invoke CreatePen, PS_SOLID, 2, 0x00FFFFFF
+            mov [hPen], eax
+            invoke CreateSolidBrush, 0x00000000
+            mov [hBrush], eax
             invoke SelectObject, [hDC], [hPen]
+            invoke SelectObject, [hDC], [hBrush]
             invoke Rectangle, [hDC], [x1],[y1],[x2],[y2]
             stdcall strclean, buffer
             movzx eax, word[esi+edi]
@@ -90,6 +95,8 @@ proc drawCPU
             stdcall concatinate, CPUNAME,space,result_buffer,1
             stdcall concatinate, result_buffer,buffer,result_buffer,0
             stdcall MyDrawText, 0x00000000,0x00FFFFFF,20,[x1], [y1],[x2],[y2],result_buffer,DT_SINGLELINE+DT_CENTER+DT_VCENTER    
+            invoke  DeleteObject, [hBrush]
+            invoke  DeleteObject, [hPen]
         .endif
 
         add [x1],square_size+cpu_cpu_gap
@@ -127,8 +134,8 @@ proc DrawOneProcess uses edi esi ebx edx ecx, procname: dword, x1 : dword, y1: d
     invoke SelectObject, [hDC], [hPen]
     invoke SelectObject, [hDC], [hBrush]
     invoke Rectangle, [hDC], [x1],[y1],[x2],[y2]
-    invoke CreatePen, PS_SOLID, 2, 0x00FFFFFF
-    mov [hPen], eax
+    invoke  DeleteObject, [hBrush]
+    invoke  DeleteObject, [hPen]
     ; draw text
     mov eax, [x1]
     add eax,text_margin_left
@@ -151,9 +158,10 @@ proc DrawOneProcess uses edi esi ebx edx ecx, procname: dword, x1 : dword, y1: d
     stdcall concatinate, result_buffer,buffer,result_buffer,0
     stdcall MyDrawText, [current_color],0x00000000,15,[textx1],[texty1],[textx2],[texty2],result_buffer,DT_LEFT
     ;
-    invoke CreateSolidBrush, 0x00000000
-    mov [hBrush], eax
-    invoke SelectObject, [hDC], [hBrush]
+    invoke  DeleteObject, [hPen]
+    ;invoke CreateSolidBrush, 0x00000000
+    ;mov [hBrush], eax
+    ;invoke SelectObject, [hDC], [hBrush]
 
 
 ret
@@ -184,12 +192,12 @@ proc DrawProcesses
             .if dword[proc_in_raw] = proc_in_raw_count
                 mov dword[x1], margin_left
                 mov dword[x2], margin_left+square_size
-                add dword[y1], square_size+proc_proc_gap
-                add dword[y2], square_size+proc_proc_gap
+                add dword[y1], square_size+cpu_cpu_gap
+                add dword[y2], square_size+cpu_cpu_gap
                 mov dword[proc_in_raw],0
             .else
-                add dword[x1],square_size+proc_proc_gap
-                add dword[x2],square_size+proc_proc_gap
+                add dword[x1],square_size+cpu_cpu_gap
+                add dword[x2],square_size+cpu_cpu_gap
             .endif
         .endif
         
@@ -203,6 +211,94 @@ proc DrawProcesses
 ret
 endp
 
+proc DrawRam
+    local proc_in_raw dd 0
+    local x1 dd left_header_width
+    local y1 dd margin_top+header_height+header_cpu_gap+square_size+cpu_middle_gap+header_height+middle_process_gap
+    local x2 dd left_header_width+page_width
+    local y2 dd margin_top+header_height+header_cpu_gap+square_size+cpu_middle_gap+header_height+middle_process_gap+page_height
+    local page_in_raw dd 0
+    mov esi, dword[RAM]
+    mov edi,0
+    .loopstart:
+        .if word[esi+edi+process_on_RAM_offset] <> -1
+            movzx eax, word[esi+edi+process_on_RAM_offset]
+            stdcall DrawOnePage, eax, [x1],[y1],[x2],[y2]
+            ;stdcall DrawOneProcess,eax ,[x1],[y1],[x2],[y2]
+            inc dword[page_in_raw]
+            .if dword[page_in_raw] = pages_in_raw_count
+                mov dword[x1], left_header_width
+                mov dword[x2], left_header_width+page_width
+                add dword[y1], page_height+page_page_gap
+                add dword[y2], page_height+page_page_gap
+                mov dword[page_in_raw],0
+            .else
+                add dword[x1],page_width+page_page_gap
+                add dword[x2],page_width+page_page_gap
+            .endif
+        .endif
+
+        add edi,RAM_offset
+        cmp edi, dword[RAM_size]
+        jb .loopstart
+ret
+endp
+
+proc DrawOnePage uses edi esi ecx ebx edx,procname: dword, x1 : dword, y1: dword, x2: dword, y2: dword
+    local textx1 dd ?
+    local textx2 dd ?
+    local texty1 dd ?
+    local texty2 dd ?
+    local currentcolor dd ?
+    mov esi, dword[processes]
+    stdcall GetEdi, [procname],process_offset
+    .if word[edi+esi+number_in_CPU_offset] = -1
+        mov dword[currentcolor],0x00808080 
+        invoke CreateSolidBrush, dword[currentcolor]
+        mov [hBrush], eax
+        invoke CreatePen, PS_SOLID, 2, dword[currentcolor]
+        mov [hPen], eax
+        invoke SelectObject, [hDC], [hPen]
+        invoke SelectObject, [hDC], [hBrush]
+        invoke Rectangle, [hDC],[x1],[y1],[x2],[y2]
+        
+    .else
+        mov dword[currentcolor],0x00FFFFFF 
+        invoke CreateSolidBrush, dword[currentcolor]
+        mov [hBrush], eax
+        invoke CreatePen, PS_SOLID, 2, dword[currentcolor]
+        mov [hPen], eax
+    .endif
+    
+    invoke SelectObject, [hDC], [hPen]
+    invoke SelectObject, [hDC], [hBrush]
+    invoke Rectangle, [hDC],[x1],[y1],[x2],[y2]
+    invoke  DeleteObject, [hPen]
+    invoke  DeleteObject, [hBrush]
+
+    ; draw text
+    mov eax, [x1]
+    add eax,textpage_margin_left
+    mov [textx1],eax
+    mov eax, [x2]
+    sub eax,textpage_margin_right
+    mov [textx2],eax
+    mov eax, [y1]
+    add eax,textpage_margin_top
+    mov [texty1],eax
+    mov eax, [y2]
+    sub eax,textpage_margin_bottom
+    mov [texty2],eax
+    
+    stdcall strclean, buffer
+    movzx eax, word[esi+edi]
+    stdcall IntToStr, eax,buffer,0
+    stdcall concatinate, PID,space,result_buffer,1
+    stdcall concatinate, result_buffer,buffer,result_buffer,0
+    stdcall MyDrawText, dword[currentcolor],0x00000000,10,[textx1],[texty1],[textx2],[texty2],result_buffer,DT_LEFT+DT_SINGLELINE+DT_VCENTER
+    
+ret
+endp
 
 
 
@@ -224,6 +320,7 @@ proc MyDrawText, bgcolor: dword,textcolor: dword,fontsize: dword,x1: dword, y1: 
     mov [rect.bottom], eax
     lea ebx, [rect] 
     invoke DrawText, [hDC], [text], -1, ebx, [pos]
+    invoke  DeleteObject, [hFont]
     ret
 endp
 
