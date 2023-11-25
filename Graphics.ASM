@@ -300,6 +300,17 @@ proc DrawOnePage uses edi esi ecx ebx edx,procname: dword, x1 : dword, y1: dword
 ret
 endp
 
+proc DrawFootter uses ebx ecx edx esi edi
+
+    stdcall strclean, buffer
+    mov eax, dword[Reset_count]
+    stdcall IntToStr, eax,buffer,0
+    stdcall concatinate, PAGEQIUTS,buffer,result_buffer,1 
+    stdcall concatinate, result_buffer,SLASH,result_buffer,0
+    stdcall MyDrawText, 0x00000000,0x00FFFFFF,20,margin_left,margin_top+header_height+header_cpu_gap+square_size+cpu_middle_gap+header_height+middle_process_gap+square_size*5+cpu_cpu_gap*4+proc_foottername_gap,left_header_width,margin_top+header_height+header_cpu_gap+square_size+cpu_middle_gap+header_height+middle_process_gap+square_size*5+cpu_cpu_gap*4+proc_foottername_gap+header_height,result_buffer,DT_LEFT+DT_SINGLELINE+DT_VCENTER
+    stdcall strclean, result_buffer
+ret
+endp
 
 
 proc MyDrawText, bgcolor: dword,textcolor: dword,fontsize: dword,x1: dword, y1: dword, x2: dword, y2: dword, text: dword, pos: dword

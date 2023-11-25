@@ -38,7 +38,7 @@ section '.data' data readable writeable
     CPU_count dw 4  ; variable for cpu count 
     RAMPages_count dw 32 ; variable for rampages count
     DISKPages_count dw 16 ; variable for diskpages count
-    Process_count dw 16 ; variable for start process count 
+    Process_count dw 9 ; variable for start process count 
     Process_size dd ? ; variable for the size off the process array
     Real_process_size dd ?
     Random_probability dw 20
@@ -84,7 +84,7 @@ section '.data' data readable writeable
     DISK_offset = 4
 
     current_name dw 0 ; curent name of process index
-    Reset_count db 0 ; current count for reset
+    Reset_count dd 0 ; current count for reset
     GAMEOVER=10 ; count for reset
     timer dd 0 ; current tick count
     time dd 0 
@@ -98,7 +98,7 @@ section '.data' data readable writeable
     
     TIME_FOR_NEW_PROCESS=10000
     TIME_FOR_NEXT_STAGE=6000
-    TIME_FOR_BEREADY=30000
+    TIME_FOR_BEREADY=65000
     TIME_FOR_REFRESH=4000
 
     ;FROOOOOOOOOOOOOOOOOOOOONT
@@ -147,7 +147,7 @@ section '.data' data readable writeable
     buffer db 16 dup (?)
     Arial db 'Arial', 0
 
-    result_buffer db 256 dup (?) ; Буфер для объединенной строки
+    result_buffer db 256 dup (?) 
     PID db 'PID',0
     IOEVENTS db 'I/O EVENTS (',0
     IOEVENTSEND db ')',0
@@ -157,15 +157,15 @@ section '.data' data readable writeable
     IDLE db 'Idle Processes :',0
     MEMPAGES db 'Memory Pages in RAM :',0
     PAGEQIUTS db 'User Ragequits (',0
-    SLASH db ' / 10) :'
+    SLASH db ' / 10) :',0
     COLOMN db ':',0
     space db ' ',0
     ZERO db '0',0
 
     PAGEQIUTS_X1 dd margin_left
-    PAGEQIUTS_Y1 dd margin_top+header_height+header_cpu_gap+square_size+cpu_middle_gap+header_height+middle_process_gap+square_size*7+cpu_cpu_gap*6
+    PAGEQIUTS_Y1 dd margin_top+header_height+header_cpu_gap+square_size+cpu_middle_gap+header_height+middle_process_gap+square_size*5+cpu_cpu_gap*4+proc_foottername_gap+header_height+foottername_footterproc_gap
     PAGEQIUTS_X2 dd margin_left+square_size
-    PAGEQIUTS_Y2 dd margin_left
+    PAGEQIUTS_Y2 dd margin_top+header_height+header_cpu_gap+square_size+cpu_middle_gap+header_height+middle_process_gap+square_size*5+cpu_cpu_gap*4+proc_foottername_gap+header_height+foottername_footterproc_gap+square_size
 
     ;Gemoji db 'D:\BSUIR\ASSembly\course_2\grinning_face_emoji.bmp', 0
     ;Gemoji db 'D:\BSUIR\ASSembly\course_2\grinning_face_emoji2.bmp', 0
@@ -274,6 +274,7 @@ proc start
             stdcall DrawRam
             popa
             pop ecx
+            stdcall DrawFootter
         ;.endif
         pusha
         stdcall timeupdate
@@ -412,7 +413,7 @@ proc timeupdate
     time_loopstart:
         .if word [esi+edi] <> -1
             .if word [esi+edi+executed_offset] <> 0
-                ;.if word[esi+edi+hung_stage_offset] > 1
+                .if word[esi+edi+hung_stage_offset] > 1
                     mov dword [esi+edi+downtime_tick_offset],0
                     .if dword [esi+edi+uptime_tick_offset] > 0 ; need to check hungstage
                         mov eax, dword [timer]
@@ -429,7 +430,7 @@ proc timeupdate
                     .endif
                     mov eax, dword [timer]
                     mov dword [esi+edi+uptime_tick_offset],eax
-                ;.endif
+                .endif
             .else 
                 mov dword [esi+edi+uptime_tick_offset],0 
                 .if dword [esi+edi+downtime_tick_offset] > 0
