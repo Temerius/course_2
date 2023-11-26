@@ -41,28 +41,23 @@ section '.data' data readable writeable
     Process_count dw 9 ; variable for start process count 
     Process_size dd ? ; variable for the size off the process array
     Real_process_size dd ?
-    Random_probability dw 20
-    Random_IOdelimiter dw 100
+    Random_probability dw 1
+    Random_IOdelimiter dw 10000
     Random_RAMdelimiter dw 4
     NeedIOCount dd 0
 
     processes dd ? ; address of the process array
 
     ; variables for process array offset  
-    number_in_CPU_offset = 2    ; cpu name
-    cells_count_offset = 4  ; ram sells count
-    hung_stage_offset = 6   ; current hung stage
-    downtime_offset = 8     ; miliseconds from downtime start
-    uptime_offset = 10      ; miliseconds from uptime start
-    finaltime_offset = 12   ; miliseconds from finaltime start
-    need_IO_offset = 14     ; number from 1 to 100 if < Random_probability IO 
-    downtime_tick_offset = 16   ; miliseconds from start system (from func gettickcount)
-    uptime_tick_offset = 20     ; miliseconds from start system (from func gettickcount)   
-    executed_offset = 24    ; flag is process executed
-    was_on_CPU_offset = 26  ; flag was process on cpu (to add new cells on ram or not)
-    process_offset = 28     ; final offset (size of cpu structure)
+    cells_count_offset = 2  ; ram sells count
+    hung_stage_offset = 4   ; current hung stage
+    downtime_offset = 6     ; miliseconds from downtime start
+    finaltime_offset = 8   ; miliseconds from finaltime start
+    need_IO_offset = 10     ; number from 1 to 100 if < Random_probability IO 
+    downtime_tick_offset = 12   ; miliseconds from start system (from func gettickcount)
+    was_on_CPU_offset = 16  ; flag was process on cpu (to add new cells on ram or not)
+    process_offset = 18     ; final offset (size of cpu structure)
     ;
-
 
 
     tmp_offset = 2 ;;;;;;;;;;;;;
@@ -70,8 +65,17 @@ section '.data' data readable writeable
 
     CPU dd ?
     CPU_size dd ?
-    process_on_CPU_offset = 2
-    CPU_offset = 4
+    cpu_proc_name_offset = 2    ; proc_name
+    cpu_cells_count_offset = 4  ; ram sells count
+    cpu_hung_stage_offset = 6   ; current hung stage
+    cpu_uptime_offset = 8      ; miliseconds from uptime start
+    cpu_downtime_offset = 10
+    cpu_finaltime_offset = 12   ; miliseconds from finaltime start
+    cpu_need_IO_offset = 14     ; number from 1 to 100 if < Random_probability IO 
+    cpu_uptime_tick_offset = 16     ; miliseconds from start system (from func gettickcount)   
+    cpu_downtime_tick_offset = 20
+    cpu_executed_offset = 24    ; flag is process executed
+    CPU_offset = 26
 
     RAM dd ?
     RAM_size dd ?
@@ -199,8 +203,6 @@ proc start
     invoke GetProcessHeap
     mov dword[myheap], eax
 
-   
-
     ; draw backgroundcolor
     invoke CreateSolidBrush, 0x00000000 
     mov [hBrush], eax
@@ -208,7 +210,6 @@ proc start
     invoke Rectangle, [hDC], 0,0,Width,Height 
     invoke  DeleteObject, [hBrush]
 
-    
     ; IMAGE
     invoke LoadImage, [hDC], Gemoji, IMAGE_BITMAP, 0, 0,LR_DEFAULTCOLOR+LR_DEFAULTSIZE+LR_LOADFROMFILE
     mov [hImage], eax
@@ -221,40 +222,30 @@ proc start
 
     ; IMAGE
 
-
-
-
-
-   
-    
-    ;invoke FillRect, [hDC], eax, [hBrush]
-    ;invoke CreateSolidBrush, 0x0000FF00 
-    ;mov [hBrush], eax
-    ;invoke  SelectObject, [hDC],eax 
-    ;invoke  Ellipse, [hDC], 250, 50, 400, 200
-    ;invoke Rectangle, [hDC], 250,250,500,500, 0x0066D7D1
-   
-    
-
     stdcall initialisation,[myheap]
 
     invoke GetTickCount
     mov dword[timer],eax
 
     stdcall CPUpush,0
-    stdcall CPUpush,3
-    stdcall CPUpush,1
+    pusha
+    stdcall drawCPU
+    popa
+    ;stdcall CPUpush,3
+    pusha
+    ;stdcall drawCPU
+    popa
+    ;stdcall CPUpush,1
     stdcall CPUpush,8
-    stdcall CPUpush,9
-    stdcall CPUpop,2
+    ;stdcall CPUpush,9
+    ;stdcall CPUpop,2
 
     ;  main loop
 
     fnop
-    mov ecx,1000000
+    mov ecx,10000
     time_loop:
         ;.if dword[time] = 0
-            push ecx
             pusha
             stdcall drawCPU
             popa
@@ -273,13 +264,16 @@ proc start
             pusha
             stdcall DrawRam
             popa
-            pop ecx
+            pusha
             stdcall DrawFootter
+            popa
         ;.endif
         pusha
         stdcall timeupdate
         popa
-        ;stdcall generateIO
+        pusha
+        stdcall generateIO
+        popa
         loop time_loop
         ;jmp time_loop
     invoke  ReleaseDC, [hwnd], [hDC]
@@ -347,15 +341,20 @@ proc deleteprocess
     ;;;;;;;;;;;;;;;;; call delete from ram and disk
     ret
 endp
-proc newprocess
+    ; comparator 1- newprocess 2 - from cpu
+proc newprocess, comparator: dword, cpu_name: dword
     mov edi,0 ; offset in process array 
-    mov esi,dword[processes]
+    mov esi, dword[processes]
     ; find process with name -1 to replace it with a new process
     .start_loop:
 
         .if word [esi+edi] = -1
-
-            stdcall addprocess
+            .if [comparator] = 1
+                stdcall addprocess
+            
+            .else
+                stdcall movcputoproc, dword[cpu_name]
+            .endif
             jmp .func_end
         .endif
 
@@ -379,7 +378,7 @@ endp
 
 proc timeupdate
     local newtimetick dd 0
-    mov esi,dword[processes]
+    
     invoke GetTickCount
     mov dword [newtimetick],eax
     sub eax, dword [timer]
@@ -404,68 +403,98 @@ proc timeupdate
     jb loop_prepare
         mov dword[newprocesstime],0
         ; call create new process
-        stdcall newprocess
+        stdcall newprocess,1,0
     
     loop_prepare:
     pop eax
     mov dword[timer],eax
+    mov esi,dword[processes]
     mov edi,0 ; offset in process array
-    time_loopstart:
+    .time_loopstart:
         .if word [esi+edi] <> -1
-            .if word [esi+edi+executed_offset] <> 0
-                .if word[esi+edi+hung_stage_offset] > 1
-                    mov dword [esi+edi+downtime_tick_offset],0
-                    .if dword [esi+edi+uptime_tick_offset] > 0 ; need to check hungstage
-                        mov eax, dword [timer]
-                        sub eax, dword [esi+edi+uptime_tick_offset]
-                        add word [esi+edi+uptime_offset],ax
-                        add word [esi+edi+finaltime_offset],ax
-                        .if word [esi+edi+uptime_offset] >= TIME_FOR_REFRESH
-                            mov word [esi+edi+hung_stage_offset],1
-                            mov word [esi+edi+uptime_offset],0
+            .if dword [esi+edi+downtime_tick_offset] > 0
+                mov eax, dword [newprocesstime]
+                sub eax, dword [esi+edi+downtime_tick_offset]
+                add word [esi+edi+downtime_offset],ax
+                
+                .if word [esi+edi+downtime_offset] >= TIME_FOR_NEXT_STAGE
+                    add word [esi+edi+hung_stage_offset],1
+                    .if word [esi+edi+hung_stage_offset] = 7
+                        
+                        stdcall deleteprocess
+                        inc [Reset_count]
+                        .if [Reset_count] = GAMEOVER
+                            ; game over
+                            invoke ExitProcess, 0
                         .endif
-                        .if word [esi+edi+finaltime_offset] >= TIME_FOR_BEREADY
-                            stdcall deleteprocess
+                    .endif                             
+                    mov word [esi+edi+downtime_offset],0
+                .endif
+            .endif
+            mov eax, dword [newprocesstime]
+            mov dword [esi+edi+downtime_tick_offset],eax
+        .endif
+
+        add edi,process_offset
+        cmp edi, dword [Process_size]
+        jne .time_loopstart
+
+    mov esi,dword[CPU]
+    mov edi,0 ; offset in process array
+    .time_loopstart2:
+        .if word[esi+edi+cpu_proc_name_offset] <> -1
+            .if word [esi+edi+cpu_executed_offset] <> 0
+                .if word[esi+edi+cpu_hung_stage_offset] > 1
+                    .if dword [esi+edi+cpu_uptime_tick_offset] > 0 ; need to check hungstage
+                        mov eax, dword [timer]
+                        sub eax, dword [esi+edi+cpu_uptime_tick_offset]
+                        add word [esi+edi+cpu_uptime_offset],ax
+                        add word [esi+edi+cpu_finaltime_offset],ax
+                        .if word [esi+edi+cpu_uptime_offset] >= TIME_FOR_REFRESH
+                            mov word [esi+edi+cpu_hung_stage_offset],1
+                            mov word [esi+edi+cpu_uptime_offset],0
+                        .endif
+                        .if word [esi+edi+cpu_finaltime_offset] >= TIME_FOR_BEREADY
+                            stdcall deleteprocess ; another part
                         .endif
                     .endif
                     mov eax, dword [timer]
-                    mov dword [esi+edi+uptime_tick_offset],eax
+                    mov dword [esi+edi+cpu_uptime_tick_offset],eax
                 .endif
-            .else 
-                mov dword [esi+edi+uptime_tick_offset],0 
-                .if dword [esi+edi+downtime_tick_offset] > 0
+            .else
+                .if dword [esi+edi+cpu_downtime_tick_offset] > 0
                     mov eax, dword [newprocesstime]
-                    sub eax, dword [esi+edi+downtime_tick_offset]
-                    add word [esi+edi+downtime_offset],ax
+                    sub eax, dword [esi+edi+cpu_downtime_tick_offset]
+                    add word [esi+edi+cpu_downtime_offset],ax
                     
-                    .if word [esi+edi+downtime_offset] >= TIME_FOR_NEXT_STAGE
-                        add word [esi+edi+hung_stage_offset],1
-                        .if word [esi+edi+hung_stage_offset] = 7
+                    .if word [esi+edi+cpu_downtime_offset] >= TIME_FOR_NEXT_STAGE
+                        add word [esi+edi+cpu_hung_stage_offset],1
+                        .if word [esi+edi+cpu_hung_stage_offset] = 7
                             
-                            stdcall deleteprocess
+                            stdcall deleteprocess ; fiiiiiiiiiiiiiix
                             inc [Reset_count]
                             .if [Reset_count] = GAMEOVER
                                 ; game over
                                 invoke ExitProcess, 0
                             .endif
                         .endif                             
-                        and bx,0 ;;;;;;;;;;;
-                        mov bx, word [esi+edi+hung_stage_offset];;;;;;for dbg
-                        mov word [esi+edi+downtime_offset],0
+                        mov word [esi+edi+cpu_downtime_offset],0
                     .endif
                 .endif
                 mov eax, dword [newprocesstime]
-                mov dword [esi+edi+downtime_tick_offset],eax
+                mov dword [esi+edi+cpu_downtime_tick_offset],eax
             .endif
         .endif
+        add edi,CPU_offset
+        cmp edi, dword [CPU_size]
+        jne .time_loopstart2
 
-        add edi,process_offset
-        cmp edi, dword [Process_size]
-        jne time_loopstart
+
+        
 ret
 endp
 
-proc GetEdi, name: dword, offset: dword
+proc GetEdi uses ebx, name: dword, offset: dword
     mov eax, dword [name]
     mov ebx, [offset]
     imul eax,ebx
@@ -558,7 +587,7 @@ proc diskrampush uses edi esi ecx, process_topush: dword , comparator1: dword, c
 
     mov esi, dword[arr1]
     mov edi, 0
-    mov ecx, [process_topush]
+    mov ecx, dword[process_topush]
     .loopstart:
         .if word[esi+edi+tmp_offset] = -1
             mov word[esi+edi+tmp_offset],cx
@@ -601,53 +630,34 @@ endp
 
 
 proc CPUpush, process_topush: dword
-    mov esi, dword[processes]
-    stdcall GetEdi, [process_topush],process_offset
-    
-    .if word[esi+edi+number_in_CPU_offset] = -1
-        push esi
-        push edi
-        mov esi, dword[CPU]
-        mov edi, 0
-        .start_loop:
-            .if word[esi+edi+process_on_CPU_offset] <> -1
-                add edi,CPU_offset
-                .if edi < dword[CPU_size]
-                    jmp .start_loop
-                .endif
-            .endif
-        .if edi < dword[CPU_size]
-            mov eax, dword [process_topush]
-            mov word[esi+edi+process_on_CPU_offset],ax
-            mov ax , word[esi+edi]
-            pop edi
-            pop esi
-            mov word[esi+edi+number_in_CPU_offset],ax
-            .if word[esi+edi+was_on_CPU_offset] = 0
-                stdcall RAMpush_process,[process_topush]
-                mov word[esi+edi+was_on_CPU_offset],1
-            .endif  
-        .else
-            mov eax,-1
-            pop edi
-            pop esi 
-        .endif
-    .else 
-        mov eax,-2
-    .endif
 
+    mov esi, dword[CPU]
+    mov edi, 0
+    .start_loop:
+        .if word[esi+edi+cpu_proc_name_offset] <> -1
+            add edi,CPU_offset
+            .if edi < dword[CPU_size]
+                jmp .start_loop
+            .endif
+        .endif
+    .if edi < dword[CPU_size]
+        stdcall movproctocpu, dword [process_topush]
+        .if word[esi+edi+was_on_CPU_offset] = 0
+            stdcall RAMpush_process,[process_topush]
+            mov word[esi+edi+was_on_CPU_offset],1
+        .endif  
+        mov word[esi+edi],-1
+    .else
+        mov eax,-1
+    .endif
     ret
 endp
 
 proc CPUpop, process_topop: dword
+    stdcall newprocess, 2, [process_topop]
     stdcall GetEdi, [process_topop],CPU_offset
     mov esi,dword [CPU]
-    mov cx,word[esi+edi+process_on_CPU_offset]
-    mov word[esi+edi+process_on_CPU_offset],-1
-    movzx ecx,cx
-    stdcall GetEdi, ecx,process_offset
-    mov esi, dword[processes]
-    mov word[esi+edi+number_in_CPU_offset],-1
+    mov word[esi+edi+cpu_proc_name_offset],-1
 ret
 endp
 
@@ -655,62 +665,77 @@ endp
 proc generateIO
     push ecx
     mov edi,0
-    mov esi, dword[processes]
+    mov esi, dword[CPU]
     movzx ecx, word[Random_probability]
     
     .loopstart:
         mov edx, 0
-        .if word[esi+edi+number_in_CPU_offset] <> -1
-            .if word[esi+edi+need_IO_offset] = 0
+        .if word[esi+edi+cpu_proc_name_offset] <> -1
+            .if word[esi+edi+cpu_need_IO_offset] = 0
                 rdrand eax
                 div [Random_IOdelimiter]
                 inc edx
                 .if edx <= ecx
-                    mov word[esi+edi+need_IO_offset],1
+                    mov word[esi+edi+cpu_need_IO_offset],1
                     inc [NeedIOCount]
                 .endif
             .endif
         .endif
-        add edi, process_offset
-        cmp edi, dword[Process_size]
+        add edi, CPU_offset
+        cmp edi, dword[CPU_size]
         jb .loopstart
     pop ecx
 ret
 endp
 
+proc findincpu uses ebx edx ecx esi edi, name: dword
+    mov esi, dword[CPU]
+    mov edi,0
+    mov eax,-1
+    mov ecx, dword[name]
+    .loopstart:
+        .if word[esi+edi+cpu_proc_name_offset] <> cx
+            add edi,CPU_offset
+            cmp edi,dword [CPU_size]
+            jb .loopstart
+        .endif
+    .if word[esi+edi+cpu_proc_name_offset] = cx
+        mov eax,1
+    .endif
+
+ret
+endp
 proc isexecuted uses edi esi ecx ebx edx
     mov edi,0
     mov esi, dword[CPU]
     .loopstart:
         ; get process name from cpu
-        movzx eax, word[esi+edi+process_on_CPU_offset]
+        movzx eax, word[esi+edi+cpu_proc_name_offset]
         .if ax <> -1
-            stdcall isprocexecuted, eax
+            stdcall isprocexecuted
         .endif
         add edi, CPU_offset
         cmp edi, dword[CPU_size]
         jb .loopstart
 ret
 endp
-proc isprocexecuted uses edi esi ecx ebx edx, process_tocheck: dword
+proc isprocexecuted uses edi esi ecx ebx edx
 
-    stdcall GetEdi,[process_tocheck],process_offset
-    mov esi, dword[processes]
-    .if word[esi+edi+need_IO_offset] = 0
-        stdcall diskcheck, [process_tocheck]
+    .if word[esi+edi+cpu_need_IO_offset] = 0
+        stdcall diskcheck
     .else
         mov eax,0
     .endif
 
-    mov word[esi+edi+executed_offset],ax
+    mov word[esi+edi+cpu_executed_offset],ax
 
 
 ret
 endp
 
-proc diskcheck uses edi esi ecx ebx edx, processname: dword
+proc diskcheck uses esi edi ecx ebx edx
     
-    mov ecx, dword[processname]
+    movzx ecx, word[esi+edi+cpu_proc_name_offset]
     mov edi,0
     mov esi, dword[DISK]
     .loopstart:
@@ -728,6 +753,209 @@ proc diskcheck uses edi esi ecx ebx edx, processname: dword
 ret
 
 endp
+
+
+
+proc addCPU
+    mov esi, dword[CPU]
+    mov word [esi+edi],cx
+    mov word [esi+edi+cpu_proc_name_offset], -1
+    mov word [esi+edi+cpu_cells_count_offset], 0
+    mov word [esi+edi+cpu_hung_stage_offset], 0
+    mov word [esi+edi+cpu_uptime_offset], 0
+    mov word [esi+edi+cpu_downtime_offset], 0
+    mov word [esi+edi+cpu_finaltime_offset], 0
+    mov word [esi+edi+cpu_need_IO_offset], 0
+    mov dword [esi+edi+cpu_uptime_tick_offset], 0
+    mov dword [esi+edi+cpu_downtime_tick_offset], 0
+    mov word [esi+edi+cpu_executed_offset], 0
+    ret
+endp
+
+proc movproctocpu uses ebx ecx edx, name: dword
+    add esi,edi
+    mov ebx,esi
+    mov esi, dword[processes]
+    stdcall GetEdi, [name],process_offset
+    movzx eax, word[edi+esi]
+    mov word [ebx+cpu_proc_name_offset], ax
+    movzx eax, word[edi+esi+cells_count_offset]
+    mov word [ebx+cpu_cells_count_offset], ax
+    movzx eax, word[edi+esi+hung_stage_offset]
+    mov word [ebx+cpu_hung_stage_offset], ax
+    movzx eax, word[edi+esi+downtime_offset]
+    mov word [ebx+cpu_downtime_offset], ax
+    movzx eax, word[edi+esi+finaltime_offset]
+    mov word [ebx+cpu_finaltime_offset], ax
+    movzx eax, word[edi+esi+need_IO_offset]
+    mov word [ebx+cpu_need_IO_offset], ax
+    mov eax, dword[edi+esi+downtime_tick_offset]
+    mov dword [ebx+cpu_downtime_tick_offset], eax
+    mov dword [ebx+cpu_uptime_offset],0
+    mov dword [ebx+cpu_uptime_tick_offset],0
+    mov dword [ebx+cpu_executed_offset],0
+
+ret
+endp
+
+proc addRAM
+    mov esi,dword[RAM]
+    mov word [esi+edi],cx
+    mov word [esi+edi+process_on_RAM_offset], -1
+    
+    ret
+endp
+
+proc addDISK
+    mov esi,dword[DISK]
+    mov word [esi+edi],cx
+    mov word [esi+edi+process_on_DISK_offset], -1
+    
+    ret
+endp
+
+proc addprocess
+    mov esi, dword[processes]
+    mov dx, word[current_name]
+    mov word [esi+edi],dx
+    inc dx
+    mov word [current_name],dx
+
+    mov edx,0
+    rdrand eax
+    div [Random_RAMdelimiter]
+    inc edx
+    mov word [esi+edi+cells_count_offset],dx
+    mov word [esi+edi+hung_stage_offset],2
+    mov word [esi+edi+downtime_offset],0
+    mov word [esi+edi+finaltime_offset],0
+    mov word [esi+edi+need_IO_offset],0
+    mov dword [esi+edi+downtime_tick_offset],0
+    mov word [esi+edi+was_on_CPU_offset],0
+    ret
+endp
+
+
+proc movcputoproc uses ebx ecx edx edi esi,name: dword
+    mov ebx, dword[CPU]
+    stdcall GetEdi, [name],CPU_offset
+    add ebx, edi
+    mov esi, dword[processes]
+    movzx eax,word[ebx+cpu_proc_name_offset]
+    stdcall GetEdi, eax,process_offset
+    movzx eax, word[ebx+cpu_proc_name_offset]
+    mov word [esi+edi],ax
+    movzx eax, word[ebx+cpu_cells_count_offset]
+    mov word [esi+edi+cells_count_offset],ax
+    movzx eax, word[ebx+cpu_hung_stage_offset]
+    mov word [esi+edi+hung_stage_offset],ax
+    movzx eax, word[ebx+cpu_downtime_offset]
+    mov word [esi+edi+downtime_offset],ax
+    movzx eax, word[ebx+cpu_finaltime_offset]
+    mov word [esi+edi+finaltime_offset],ax
+    movzx eax, word[ebx+cpu_need_IO_offset]
+    mov word [esi+edi+need_IO_offset],ax
+    mov eax, dword[ebx+cpu_downtime_tick_offset]
+    mov dword [esi+edi+downtime_tick_offset],eax
+    mov word [esi+edi+was_on_CPU_offset],1
+ret
+endp
+
+proc initialisation, a: DWORD
+    ; process array size
+    mov ax, word [Process_count]
+    mov bx, process_offset
+    imul ax,bx
+    ;
+
+    movzx eax,ax
+    mov dword [Process_size],eax
+
+
+    shl eax,1 ;expand array size x2
+
+    mov dword [Real_process_size],eax
+    mov ebx,eax
+    invoke HeapAlloc, [a],0,ebx
+    mov dword [processes],eax
+    mov esi,eax       ;;;;;;;;;;;;;
+
+    mov edi,0 ; offset in process array
+
+    ; filling the array of processes
+    ini_loopstart:
+        stdcall addprocess
+        add edi,process_offset
+        cmp edi, dword [Process_size]
+        jne ini_loopstart
+
+    ;
+    
+    ; ini for CPU
+    mov ax, word [CPU_count]
+    mov bx, CPU_offset
+    imul ax,bx
+    movzx eax,ax
+    mov dword [CPU_size],eax
+    mov ebx,eax
+    invoke HeapAlloc, [a],0,ebx
+    mov dword [CPU],eax
+    mov esi,eax       ;;;;;;;;;;;;;
+    mov edi,0 ; offset in CPU array
+    mov cx,0
+    ; filling the array of CPUs
+    inicpu_loopstart:
+        stdcall addCPU
+        inc cx
+        add edi,CPU_offset
+        cmp edi, dword [CPU_size]
+        jne inicpu_loopstart
+
+
+    ; ini for RAM
+    mov ax, word [RAMPages_count]
+    mov bx, RAM_offset
+    imul ax,bx
+    movzx eax,ax
+    mov dword [RAM_size],eax
+    mov ebx,eax
+    invoke HeapAlloc, [a],0,ebx
+    mov dword [RAM],eax
+    mov esi,eax       ;;;;;;;;;;;;;
+
+    mov edi,0 ; offset in RAM array
+    mov cx,0
+    ; filling the array of RAM
+    iniram_loopstart:
+        stdcall addRAM
+        inc cx
+        add edi,RAM_offset
+        cmp edi, dword [RAM_size]
+        jne iniram_loopstart
+
+    ; ini for DISK
+    mov ax, word [DISKPages_count]
+    mov bx, DISK_offset
+    imul ax,bx
+    movzx eax,ax
+    mov dword [DISK_size],eax
+    mov ebx,eax
+    invoke HeapAlloc, [a],0,ebx
+    mov dword [DISK],eax
+    mov esi,eax       ;;;;;;;;;;;;;
+
+    mov edi,0 ; offset in DISK array
+    mov cx,0
+    ; filling the array of DISK
+    inidisk_loopstart:
+        stdcall addDISK
+        inc cx
+        add edi,DISK_offset
+        cmp edi, dword [DISK_size]
+        jne inidisk_loopstart
+ret
+endp
+
 
 
 

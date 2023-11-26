@@ -62,23 +62,19 @@ endp
 
 proc drawCPU
 
- 
-
     local x1 dd margin_left
     local y1 dd margin_top+header_height+header_cpu_gap
     local x2 dd margin_left+square_size
     local y2 dd margin_top+header_height+header_cpu_gap+square_size
     
-    ;local current_color dd ?
-    ;local current_name dd ?
     mov esi, dword[CPU]
     mov edi,0
 
    
     .loopstart:
-        .if word[esi+edi+process_on_CPU_offset] <> -1
-            movzx eax, word[esi+edi+process_on_CPU_offset]
-            stdcall DrawOneProcess,eax ,[x1],[y1],[x2],[y2]
+        .if word[esi+edi+cpu_proc_name_offset] <> -1
+            movzx eax, word[esi+edi+cpu_proc_name_offset]
+            stdcall DrawOneProcess,eax ,[x1],[y1],[x2],[y2],2
             
 
         .else
@@ -109,16 +105,20 @@ proc drawCPU
 ret
 endp
 
-
-proc DrawOneProcess uses edi esi ebx edx ecx, procname: dword, x1 : dword, y1: dword, x2: dword, y2: dword
+;comparator 1 - process 2 - cpu
+proc DrawOneProcess uses edi esi ebx edx ecx, procname: dword, x1 : dword, y1: dword, x2: dword, y2: dword,comparator: dword
     local current_color dd ?
     local textx1 dd ?
     local textx2 dd ?
     local texty1 dd ?
     local texty2 dd ?
-    mov esi, dword[processes]
-    stdcall GetEdi, [procname],process_offset
-    movzx eax, word[esi+edi+hung_stage_offset]
+    .if [comparator] = 1
+        mov esi, dword[processes]
+        stdcall GetEdi, [procname],process_offset
+        movzx eax, word[esi+edi+hung_stage_offset]
+    .else 
+        movzx eax, word[esi+edi+cpu_hung_stage_offset]
+    .endif
     imul eax,4
     push edi
     mov edi, Colorarray         
@@ -151,8 +151,14 @@ proc DrawOneProcess uses edi esi ebx edx ecx, procname: dword, x1 : dword, y1: d
     mov [texty2],eax
     
     stdcall strclean, buffer
-    movzx eax, word[esi+edi]
-    ;mov [current_name],eax
+
+    .if [comparator] = 1
+        mov esi, dword[processes]
+        stdcall GetEdi, [procname],process_offset
+        movzx eax, word[esi+edi]
+    .else 
+        movzx eax, word[esi+edi+cpu_proc_name_offset]
+    .endif
     stdcall IntToStr, eax,buffer,0
     stdcall concatinate, PID,space,result_buffer,1
     stdcall concatinate, result_buffer,buffer,result_buffer,0
@@ -185,24 +191,31 @@ proc DrawProcesses
     mov esi, dword[processes]
     mov edi,0
     .loopstart:
-        .if word[esi+edi+number_in_CPU_offset] = -1
+        .if word[esi+edi] <> -1
             movzx eax, word[esi+edi]
-            stdcall DrawOneProcess,eax ,[x1],[y1],[x2],[y2]
-            inc dword[proc_in_raw]
-            .if dword[proc_in_raw] = proc_in_raw_count
-                mov dword[x1], margin_left
-                mov dword[x2], margin_left+square_size
-                add dword[y1], square_size+cpu_cpu_gap
-                add dword[y2], square_size+cpu_cpu_gap
-                mov dword[proc_in_raw],0
-            .else
-                add dword[x1],square_size+cpu_cpu_gap
-                add dword[x2],square_size+cpu_cpu_gap
-            .endif
+            stdcall DrawOneProcess,eax ,[x1],[y1],[x2],[y2],1
+        .else
+            invoke CreateSolidBrush, 0x00000000
+            mov [hBrush], eax
+            invoke CreatePen, PS_SOLID, 2, 0x00000000
+            mov [hPen], eax
+            invoke SelectObject, [hDC], [hPen]
+            invoke SelectObject, [hDC], [hBrush]
+            invoke Rectangle, [hDC], [x1],[y1],[x2],[y2]
+            invoke  DeleteObject, [hBrush]
+            invoke  DeleteObject, [hPen]
+         .endif
+        inc dword[proc_in_raw]
+        .if dword[proc_in_raw] = proc_in_raw_count
+            mov dword[x1], margin_left
+            mov dword[x2], margin_left+square_size
+            add dword[y1], square_size+cpu_cpu_gap
+            add dword[y2], square_size+cpu_cpu_gap
+            mov dword[proc_in_raw],0
+        .else
+            add dword[x1],square_size+cpu_cpu_gap
+            add dword[x2],square_size+cpu_cpu_gap
         .endif
-        
-        
-        
 
         add edi,process_offset
         cmp edi, dword[Process_size]
@@ -250,9 +263,11 @@ proc DrawOnePage uses edi esi ecx ebx edx,procname: dword, x1 : dword, y1: dword
     local texty1 dd ?
     local texty2 dd ?
     local currentcolor dd ?
-    mov esi, dword[processes]
-    stdcall GetEdi, [procname],process_offset
-    .if word[edi+esi+number_in_CPU_offset] = -1
+    stdcall findincpu, dword[procname]
+    .if eax = -1
+        mov esi, dword[processes]
+        stdcall GetEdi, [procname],process_offset
+        
         mov dword[currentcolor],0x00808080 
         invoke CreateSolidBrush, dword[currentcolor]
         mov [hBrush], eax
@@ -261,13 +276,16 @@ proc DrawOnePage uses edi esi ecx ebx edx,procname: dword, x1 : dword, y1: dword
         invoke SelectObject, [hDC], [hPen]
         invoke SelectObject, [hDC], [hBrush]
         invoke Rectangle, [hDC],[x1],[y1],[x2],[y2]
-        
     .else
+        mov esi, dword[CPU]
+        stdcall GetEdi, [procname],CPU_offset
+
         mov dword[currentcolor],0x00FFFFFF 
         invoke CreateSolidBrush, dword[currentcolor]
         mov [hBrush], eax
         invoke CreatePen, PS_SOLID, 2, dword[currentcolor]
         mov [hPen], eax
+   
     .endif
     
     invoke SelectObject, [hDC], [hPen]
