@@ -38,7 +38,7 @@ section '.data' data readable writeable
     CPU_count dw 4  ; variable for cpu count 
     RAMPages_count dw 32 ; variable for rampages count
     DISKPages_count dw 16 ; variable for diskpages count
-    Process_count dw 9 ; variable for start process count 
+    Process_count dw 5 ; variable for start process count 
     Process_size dd ? ; variable for the size off the process array
     Real_process_size dd ?
     Random_probability dw 1
@@ -100,7 +100,7 @@ section '.data' data readable writeable
     myheap dd 0 ; heap from getprocessheap
     
     
-    TIME_FOR_NEW_PROCESS=10000
+    TIME_FOR_NEW_PROCESS=4000
     TIME_FOR_NEXT_STAGE=6000
     TIME_FOR_BEREADY=65000
     TIME_FOR_REFRESH=4000
@@ -228,17 +228,14 @@ proc start
     mov dword[timer],eax
 
     stdcall CPUpush,0
-    pusha
-    stdcall drawCPU
-    popa
-    ;stdcall CPUpush,3
-    pusha
-    ;stdcall drawCPU
-    popa
+
+    stdcall CPUpush,2
+
     ;stdcall CPUpush,1
-    stdcall CPUpush,8
+    stdcall CPUpush,3
+
     ;stdcall CPUpush,9
-    ;stdcall CPUpop,2
+    ;stdcall CPUpop,1
 
     ;  main loop
 
@@ -272,7 +269,7 @@ proc start
         stdcall timeupdate
         popa
         pusha
-        stdcall generateIO
+        ;stdcall generateIO
         popa
         loop time_loop
         ;jmp time_loop
@@ -342,16 +339,15 @@ proc deleteprocess
     ret
 endp
     ; comparator 1- newprocess 2 - from cpu
-proc newprocess, comparator: dword, cpu_name: dword
+proc newprocess uses ecx ebx edx esi edi, comparator: dword, cpu_name: dword
     mov edi,0 ; offset in process array 
     mov esi, dword[processes]
     ; find process with name -1 to replace it with a new process
     .start_loop:
 
         .if word [esi+edi] = -1
-            .if [comparator] = 1
+            .if dword[comparator] = 1
                 stdcall addprocess
-            
             .else
                 stdcall movcputoproc, dword[cpu_name]
             .endif
@@ -495,6 +491,7 @@ ret
 endp
 
 proc GetEdi uses ebx, name: dword, offset: dword
+    
     mov eax, dword [name]
     mov ebx, [offset]
     imul eax,ebx
@@ -565,7 +562,7 @@ proc diskrampush uses edi esi ecx, process_topush: dword , comparator1: dword, c
         offset2 dd ?
     endl
     push ecx ; save currentcellcount for function
-    .if [comparator2] = 1
+    .if dword[comparator2] = 1
         mov eax,[RAM]
         mov [arr1],eax
         mov eax,[RAM_size]
@@ -598,14 +595,14 @@ proc diskrampush uses edi esi ecx, process_topush: dword , comparator1: dword, c
             jne .loopstart
         .endif
 
-        .endloop:
-        .if edi >= dword [size1]
-            mov eax,-1
-        .else 
-            .if [comparator1] <> -1
-                stdcall deletefromdiskram,[comparator1],[offset2],[arr2]
-            .endif
-            mov eax,0
+    .endloop:
+    .if edi >= dword [size1]
+        mov eax,-1
+    .else 
+        .if [comparator1] <> -1
+            stdcall deletefromdiskram,[comparator1],[offset2],[arr2]
+        .endif
+        mov eax,0
         .endif
     pop ecx
     ret
@@ -618,12 +615,12 @@ proc RAMpush_process uses ecx edi esi, process_topush: dword
     mov cx, word[esi+edi+cells_count_offset]
     .loopstart:
 
-        stdcall diskrampush, [process_topush],-1,1
+        stdcall diskrampush, dword[process_topush],-1,1
         .if eax = -1
-            stdcall diskrampush, [process_topush],-1,2
+            stdcall diskrampush, dword[process_topush],-1,2
         .endif
-        inc [currentcount]
-        cmp [currentcount],cx
+        inc word[currentcount]
+        cmp word[currentcount],cx
         jb .loopstart
     ret
 endp
@@ -643,7 +640,7 @@ proc CPUpush, process_topush: dword
     .if edi < dword[CPU_size]
         stdcall movproctocpu, dword [process_topush]
         .if word[esi+edi+was_on_CPU_offset] = 0
-            stdcall RAMpush_process,[process_topush]
+            stdcall RAMpush_process, dword[process_topush]
             mov word[esi+edi+was_on_CPU_offset],1
         .endif  
         mov word[esi+edi],-1
@@ -653,11 +650,14 @@ proc CPUpush, process_topush: dword
     ret
 endp
 
-proc CPUpop, process_topop: dword
-    stdcall newprocess, 2, [process_topop]
-    stdcall GetEdi, [process_topop],CPU_offset
-    mov esi,dword [CPU]
-    mov word[esi+edi+cpu_proc_name_offset],-1
+proc CPUpop uses esi edi ecx ebx edx, process_topop: dword
+
+    stdcall newprocess, 2, dword[process_topop]
+    mov esi, dword[CPU]
+    stdcall GetEdi, dword[process_topop],CPU_offset
+    mov word[esi+edi+cpu_cells_count_offset], -1
+    
+    
 ret
 endp
 
@@ -688,23 +688,7 @@ proc generateIO
 ret
 endp
 
-proc findincpu uses ebx edx ecx esi edi, name: dword
-    mov esi, dword[CPU]
-    mov edi,0
-    mov eax,-1
-    mov ecx, dword[name]
-    .loopstart:
-        .if word[esi+edi+cpu_proc_name_offset] <> cx
-            add edi,CPU_offset
-            cmp edi,dword [CPU_size]
-            jb .loopstart
-        .endif
-    .if word[esi+edi+cpu_proc_name_offset] = cx
-        mov eax,1
-    .endif
 
-ret
-endp
 proc isexecuted uses edi esi ecx ebx edx
     mov edi,0
     mov esi, dword[CPU]
@@ -791,9 +775,9 @@ proc movproctocpu uses ebx ecx edx, name: dword
     mov word [ebx+cpu_need_IO_offset], ax
     mov eax, dword[edi+esi+downtime_tick_offset]
     mov dword [ebx+cpu_downtime_tick_offset], eax
-    mov dword [ebx+cpu_uptime_offset],0
+    mov word [ebx+cpu_uptime_offset],0
     mov dword [ebx+cpu_uptime_tick_offset],0
-    mov dword [ebx+cpu_executed_offset],0
+    mov word [ebx+cpu_executed_offset],0
 
 ret
 endp
@@ -814,8 +798,8 @@ proc addDISK
     ret
 endp
 
-proc addprocess
-    mov esi, dword[processes]
+proc addprocess uses esi edi edx ebx ecx
+    ;mov esi, dword[processes]
     mov dx, word[current_name]
     mov word [esi+edi],dx
     inc dx
