@@ -36,8 +36,10 @@ section '.data' data readable writeable
 
 
     CPU_count dw 6  ; variable for cpu count 
-    RAMPages_count dw 32 ; variable for rampages count
-    DISKPages_count dw 16 ; variable for diskpages count
+    RAMPages_count dw ? ; variable for rampages count
+    RAM_lines_count dw 2
+    DISKPages_count dw ? ; variable for diskpages count
+    DISK_lines_count dw raw_count
     Process_count dw 5 ; variable for start process count 
     Process_size dd ? ; variable for the size off the process array
     Real_process_size dd ?
@@ -139,6 +141,7 @@ section '.data' data readable writeable
     
     proc_foottername_gap = 30
     foottername_footterproc_gap = 5
+    dead_dead_gap = 5
 
     page_page_gap = 5
     square_size = 75
@@ -148,6 +151,7 @@ section '.data' data readable writeable
 
     proc_in_raw_count = 7
     pages_in_raw_count = 16
+    raw_count = 15
   
     buffer db 16 dup (?)
     Arial db 'Arial', 0
@@ -460,8 +464,10 @@ proc timeupdate
                 .if word [esi+edi+downtime_offset] >= TIME_FOR_NEXT_STAGE
                     add word [esi+edi+hung_stage_offset],1
                     .if word [esi+edi+hung_stage_offset] = 7
-                        
+                        movzx eax, word [esi+edi+proc_name_offset]
+                        stdcall DrawDead, eax
                         stdcall deleteprocess
+                        
                         inc [Reset_count]
                         .if [Reset_count] = GAMEOVER
                             ; game over
@@ -517,6 +523,8 @@ proc timeupdate
                     .if word [esi+edi+cpu_downtime_offset] >= TIME_FOR_NEXT_STAGE
                         add word [esi+edi+cpu_hung_stage_offset],1
                         .if word [esi+edi+cpu_hung_stage_offset] = 7
+                            movzx eax, word [esi+edi+cpu_proc_name_offset]
+                            stdcall DrawDead, eax
                             stdcall deletecpu
                             inc [Reset_count]
                             .if [Reset_count] = GAMEOVER

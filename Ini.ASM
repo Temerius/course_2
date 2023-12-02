@@ -159,6 +159,11 @@ proc initialisation, a: DWORD
 
 
     ; ini for RAM
+    mov ecx,pages_in_raw_count
+    movzx eax, word[RAM_lines_count]
+    imul eax,ecx
+    mov word[RAMPages_count],ax
+
     mov ax, word [RAMPages_count]
     mov bx, RAM_offset
     imul ax,bx
@@ -169,6 +174,8 @@ proc initialisation, a: DWORD
     mov dword [RAM],eax
     mov esi,eax       ;;;;;;;;;;;;;
 
+
+    
     mov edi,0 ; offset in RAM array
     mov cx,0
     ; filling the array of RAM
@@ -179,7 +186,18 @@ proc initialisation, a: DWORD
         cmp edi, dword [RAM_size]
         jne iniram_loopstart
 
+
+
     ; ini for DISK
+
+
+    movzx eax, word[RAM_lines_count]
+    sub word[DISK_lines_count], ax
+    mov ecx, pages_in_raw_count
+    movzx eax, word[DISK_lines_count]
+    imul eax,ecx
+    mov word[DISKPages_count],ax
+
     mov ax, word [DISKPages_count]
     mov bx, DISK_offset
     imul ax,bx
@@ -188,8 +206,9 @@ proc initialisation, a: DWORD
     mov ebx,eax
     invoke HeapAlloc, [a],0,ebx
     mov dword [DISK],eax
-    mov esi,eax       ;;;;;;;;;;;;;
+    
 
+    mov esi,eax       ;;;;;;;;;;;;;
     mov edi,0 ; offset in DISK array
     mov cx,0
     ; filling the array of DISK

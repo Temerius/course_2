@@ -265,6 +265,9 @@ proc DrawRam
 ret
 endp
 
+
+
+
 proc DrawOnePage uses edi esi ecx ebx edx,procname: dword, x1 : dword, y1: dword, x2: dword, y2: dword
     local textx1 dd ?
     local textx2 dd ?
@@ -272,15 +275,9 @@ proc DrawOnePage uses edi esi ecx ebx edx,procname: dword, x1 : dword, y1: dword
     local texty2 dd ?
     local currentcolor dd ?
     stdcall findincpu, dword[procname]
-    .if eax = -1
-
-        
-        mov dword[currentcolor],0x00808080 
-        
-        
+    .if eax = -1     
+        mov dword[currentcolor],0x00808080    
     .else
-
-
         mov dword[currentcolor],0x00FFFFFF 
    
     .endif
@@ -339,7 +336,6 @@ ret
 endp
 
 proc DrawFootter uses ebx ecx edx esi edi
-
     stdcall strclean, buffer
     mov eax, dword[Reset_count]
     stdcall IntToStr, eax,buffer,0
@@ -347,6 +343,54 @@ proc DrawFootter uses ebx ecx edx esi edi
     stdcall concatinate, result_buffer,SLASH,result_buffer,0
     stdcall MyDrawText, 0x00000000,0x00FFFFFF,20,margin_left,margin_top+header_height+header_cpu_gap+square_size+cpu_middle_gap+header_height+middle_process_gap+square_size*5+cpu_cpu_gap*4+proc_foottername_gap,left_header_width,margin_top+header_height+header_cpu_gap+square_size+cpu_middle_gap+header_height+middle_process_gap+square_size*5+cpu_cpu_gap*4+proc_foottername_gap+header_height,result_buffer,DT_LEFT+DT_SINGLELINE+DT_VCENTER
     stdcall strclean, result_buffer
+ret
+endp
+
+
+proc DrawDead uses esi edi ebx ecx edx, procname: dword
+    local current_color dd ?
+    local textx1 dd ?
+    local textx2 dd ?
+    local texty1 dd ?
+    local texty2 dd ?
+
+    mov eax,0x00808080
+    mov [current_color], eax
+    invoke CreateSolidBrush, eax
+    mov [hBrush], eax
+    invoke CreatePen, PS_SOLID, 2, [current_color]
+    mov [hPen], eax
+    invoke SelectObject, [hDC], [hPen]
+    invoke SelectObject, [hDC], [hBrush]
+    invoke Rectangle, [hDC], [PAGEQIUTS_X1],[PAGEQIUTS_Y1],[PAGEQIUTS_X2],[PAGEQIUTS_Y2]
+    invoke  DeleteObject, [hBrush]
+    invoke  DeleteObject, [hPen]
+    ; draw text
+    mov eax, [PAGEQIUTS_X1]
+    add eax,text_margin_left
+    mov [textx1],eax
+    mov eax, [PAGEQIUTS_X2]
+    sub eax,text_margin_right
+    mov [textx2],eax
+    mov eax, [PAGEQIUTS_Y1]
+    add eax,text_margin_top
+    mov [texty1],eax
+    mov eax, [PAGEQIUTS_Y2]
+    sub eax,text_margin_bottom
+    mov [texty2],eax
+
+    add dword[PAGEQIUTS_X1],square_size+dead_dead_gap
+    add dword[PAGEQIUTS_X2],square_size+dead_dead_gap
+    
+    stdcall strclean, buffer
+
+    mov eax, dword[procname]
+    stdcall IntToStr, eax,buffer,0
+    stdcall concatinate, PID,space,result_buffer,1
+    stdcall concatinate, result_buffer,buffer,result_buffer,0
+    stdcall MyDrawText, [current_color],0x00000000,15,[textx1],[texty1],[textx2],[texty2],result_buffer,DT_LEFT
+    ;
+    invoke  DeleteObject, [hPen]
 ret
 endp
 
