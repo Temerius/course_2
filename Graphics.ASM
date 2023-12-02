@@ -114,8 +114,8 @@ proc DrawOneProcess uses edi esi ebx edx ecx, procname: dword, x1 : dword, y1: d
     local texty1 dd ?
     local texty2 dd ?
     .if [comparator] = 1
-        mov esi, dword[processes]
-        stdcall GetEdi, [procname],process_offset
+        ;mov esi, dword[processes]
+        ;stdcall GetEdi, [procname],process_offset
         movzx eax, word[esi+edi+hung_stage_offset]
     .else 
         movzx eax, word[esi+edi+cpu_hung_stage_offset]
@@ -153,14 +153,7 @@ proc DrawOneProcess uses edi esi ebx edx ecx, procname: dword, x1 : dword, y1: d
     
     stdcall strclean, buffer
 
-    .if [comparator] = 1
-        mov esi, dword[processes]
-        stdcall GetEdi, [procname],process_offset
-        movzx eax, word[esi+edi]
-    .else 
-        movzx eax, word[esi+edi+cpu_proc_name_offset]
-    .endif
-
+    mov eax, dword[procname]
     stdcall IntToStr, eax,buffer,0
     stdcall concatinate, PID,space,result_buffer,1
     stdcall concatinate, result_buffer,buffer,result_buffer,0
@@ -193,14 +186,10 @@ proc DrawProcesses
     mov esi, dword[processes]
     mov edi,0
     .loopstart:
-        .if word[esi+edi] <> -1
+        .if word[esi+edi+proc_name_offset] <> -1
 
-            movzx eax, word[esi+edi]
+            movzx eax, word[esi+edi+proc_name_offset]
             stdcall DrawOneProcess,eax ,[x1],[y1],[x2],[y2],1
-            .if edi = 0
-                xor eax, eax 
-                div eax
-            .endif
         .else
             invoke CreateSolidBrush, 0x00000000
             mov [hBrush], eax
@@ -284,15 +273,13 @@ proc DrawOnePage uses edi esi ecx ebx edx,procname: dword, x1 : dword, y1: dword
     local currentcolor dd ?
     stdcall findincpu, dword[procname]
     .if eax = -1
-        mov esi, dword[processes]
-        stdcall GetEdi, dword[procname],process_offset
+
         
         mov dword[currentcolor],0x00808080 
         
         
     .else
-        mov esi, dword[CPU]
-        stdcall GetEdi, dword[procname],CPU_offset
+
 
         mov dword[currentcolor],0x00FFFFFF 
    
