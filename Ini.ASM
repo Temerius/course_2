@@ -218,5 +218,19 @@ proc initialisation, a: DWORD
         add edi,DISK_offset
         cmp edi, dword [DISK_size]
         jne inidisk_loopstart
+        
+    
+    xor edx,edx
+    movzx eax, [RAM_lines_count]
+    mov ecx, page_height
+    imul eax,ecx
+    add dword[DISKY1],eax
+    xor edx,edx
+    movzx eax, [RAM_lines_count]
+    dec eax
+    mov ecx, page_page_gap
+    imul eax,ecx
+    add dword[DISKY1],eax
+    add dword[DISKY1],ram_disk_gap
 ret
 endp

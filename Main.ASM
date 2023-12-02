@@ -40,7 +40,7 @@ section '.data' data readable writeable
     RAM_lines_count dw 2
     DISKPages_count dw ? ; variable for diskpages count
     DISK_lines_count dw raw_count
-    Process_count dw 5 ; variable for start process count 
+    Process_count dw 10 ; variable for start process count 
     Process_size dd ? ; variable for the size off the process array
     Real_process_size dd ?
     Random_probability dw 1
@@ -105,7 +105,7 @@ section '.data' data readable writeable
     
     TIME_FOR_NEW_PROCESS=10000
     TIME_FOR_NEXT_STAGE=6000
-    TIME_FOR_BEREADY=5000
+    TIME_FOR_BEREADY=12000
     TIME_FOR_REFRESH=4000
 
     ;FROOOOOOOOOOOOOOOOOOOOONT
@@ -132,7 +132,7 @@ section '.data' data readable writeable
     left_header_width = 700
     right_header_width = 1000
 
-
+    square_size = 75
 
     cpu_cpu_gap = 5
     header_cpu_gap = 15
@@ -142,16 +142,17 @@ section '.data' data readable writeable
     proc_foottername_gap = 30
     foottername_footterproc_gap = 5
     dead_dead_gap = 5
-
     page_page_gap = 5
-    square_size = 75
+    ram_disk_gap = 30
+    disk_page_gap = 15
+    
 
     page_width = 40
     page_height = 30
 
     proc_in_raw_count = 7
-    pages_in_raw_count = 16
-    raw_count = 15
+    pages_in_raw_count = 12
+    raw_count = 10
   
     buffer db 16 dup (?)
     Arial db 'Arial', 0
@@ -165,6 +166,7 @@ section '.data' data readable writeable
     CPUNAME db 'CPU',0
     IDLE db 'Idle Processes :',0
     MEMPAGES db 'Memory Pages in RAM :',0
+    DISKPAGES db 'Memory Pages on Disk :',0
     PAGEQIUTS db 'User Ragequits (',0
     SLASH db ' / 10) :',0
     COLOMN db ':',0
@@ -176,6 +178,7 @@ section '.data' data readable writeable
     PAGEQIUTS_X2 dd margin_left+square_size
     PAGEQIUTS_Y2 dd margin_top+header_height+header_cpu_gap+square_size+cpu_middle_gap+header_height+middle_process_gap+square_size*5+cpu_cpu_gap*4+proc_foottername_gap+header_height+foottername_footterproc_gap+square_size
 
+    DISKY1 dd margin_top+header_height+header_cpu_gap+square_size+cpu_middle_gap+header_height+middle_process_gap
     ;Gemoji db 'D:\BSUIR\ASSembly\course_2\grinning_face_emoji.bmp', 0
     ;Gemoji db 'D:\BSUIR\ASSembly\course_2\grinning_face_emoji2.bmp', 0
     ;Gemoji db 'D:\BSUIR\ASSembly\course_2\images\grinning_face_emoji.bmp', 0
@@ -236,12 +239,24 @@ proc start
 
     stdcall CPUpush,2
 
-    ;stdcall CPUpush,1
+    stdcall CPUpush,1
     stdcall CPUpush,3
 
     ;stdcall CPUpush,9
     stdcall CPUpop,0
-
+    stdcall CPUpush,4
+    stdcall CPUpush,0
+    stdcall CPUpush,5
+    stdcall CPUpop,5
+    stdcall CPUpush,6
+    stdcall CPUpop,5
+    stdcall CPUpush,7
+    stdcall CPUpop,5
+    stdcall CPUpush,8
+    stdcall CPUpop,5
+    stdcall CPUpush,9
+    stdcall CPUpop,5
+    stdcall CPUpush,4
     ;  main loop
 
     fnop
@@ -264,7 +279,13 @@ proc start
             stdcall DrawProcesses
             popa
             pusha
-            stdcall DrawRam
+            stdcall DrawPages,1
+            popa
+            pusha
+            stdcall DrawDisk
+            popa
+            pusha
+            stdcall DrawPages,2
             popa
             pusha
             stdcall DrawFootter

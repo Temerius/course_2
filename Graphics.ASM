@@ -220,18 +220,30 @@ proc DrawProcesses
 ret
 endp
 
-proc DrawRam
+; 1 - RAM 2 - DISK
+proc DrawPages, comparator : dword
     local proc_in_raw dd 0
     local x1 dd left_header_width
-    local y1 dd margin_top+header_height+header_cpu_gap+square_size+cpu_middle_gap+header_height+middle_process_gap
     local x2 dd left_header_width+page_width
+    local y1 dd margin_top+header_height+header_cpu_gap+square_size+cpu_middle_gap+header_height+middle_process_gap
     local y2 dd margin_top+header_height+header_cpu_gap+square_size+cpu_middle_gap+header_height+middle_process_gap+page_height
     local page_in_raw dd 0
-    mov esi, dword[RAM]
+
+    .if dword[comparator] = 1
+        mov esi, dword[RAM]
+    .else
+        mov esi, dword[DISK]
+        mov eax, dword[DISKY1]
+        mov dword[y1],eax
+        add dword[y1],header_height+disk_page_gap
+        mov eax , dword[y1]
+        add eax, page_height
+        mov dword[y2],eax
+    .endif
     mov edi,0
     .loopstart:
-        .if word[esi+edi+process_on_RAM_offset] <> -1
-            movzx eax, word[esi+edi+process_on_RAM_offset]
+        .if word[esi+edi+tmp_offset] <> -1
+            movzx eax, word[esi+edi+tmp_offset]
             stdcall DrawOnePage, eax, [x1],[y1],[x2],[y2]
             ;stdcall DrawOneProcess,eax ,[x1],[y1],[x2],[y2]
             
@@ -259,14 +271,25 @@ proc DrawRam
             add dword[x2],page_width+page_page_gap
         .endif
 
-        add edi,RAM_offset
-        cmp edi, dword[RAM_size]
+        .if [comparator] = 1
+            add edi,RAM_offset
+            cmp edi, dword[RAM_size]
+        .else
+            add edi,DISK_offset
+            cmp edi, dword[DISK_size] 
+        .endif
         jb .loopstart
 ret
 endp
 
 
-
+proc DrawDisk 
+    mov eax, dword[DISKY1]
+    mov ecx,eax
+    add ecx,header_height
+    stdcall MyDrawText, 0x00000000,0x00FFFFFF,40,left_header_width,eax,header_width,ecx,DISKPAGES,DT_LEFT
+ret
+endp
 
 proc DrawOnePage uses edi esi ecx ebx edx,procname: dword, x1 : dword, y1: dword, x2: dword, y2: dword
     local textx1 dd ?
