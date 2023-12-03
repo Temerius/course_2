@@ -231,17 +231,6 @@ proc start
     invoke Rectangle, [hDC], 0,0,Width,Height 
     invoke  DeleteObject, [hBrush]
 
-    ; IMAGE
-    ;invoke LoadImage, [hDC], Gemoji, IMAGE_BITMAP, 0, 0,LR_DEFAULTCOLOR+LR_DEFAULTSIZE+LR_LOADFROMFILE
-    ;mov [hImage], eax
-    ;invoke CreateCompatibleDC, [hDC]
-    ;mov [hImageDC], eax
-    ;mov eax,[hImage]
-    ;invoke SelectObject, [hImageDC], eax
-    ;invoke BitBlt, [hDC], 500, 500, 30, 30, [hImageDC], 0, 0, SRCCOPY
-    ;invoke DeleteDC, [hImageDC]
-
-    ; IMAGE
 
     stdcall initialisation,[myheap]
 
@@ -456,133 +445,7 @@ ret
 endp
 
 
-proc timeupdate
-    local newtimetick dd 0
-    
-    invoke GetTickCount
-    mov dword [newtimetick],eax
-    sub eax, dword [timer]
-    add dword[time], eax
-    .if [time] > 1000
-        inc dword[seconds]
-        inc dword[score]
-        mov [time],0
-        .if dword[seconds] = 60
-            inc dword[minutes]
-            mov dword[seconds],0
-            .if dword[minutes] = 60
-                inc dword[hours]
-                mov dword[minutes],0
-            .endif
-        .endif
-    .endif
-    mov eax, dword[newtimetick]
-    sub eax, dword[timer]
-    add dword[newprocesstime],eax
-    cmp [newprocesstime],TIME_FOR_NEW_PROCESS
-    jb loop_prepare
-        mov dword[newprocesstime],0
-        ; call create new process
-        stdcall newprocess,1,0
-    
-    loop_prepare:
-    pop eax
-    mov dword[timer],eax
-    mov esi,dword[processes]
-    mov edi,0 ; offset in process array
-    .time_loopstart:
-        .if word [esi+edi+proc_name_offset] <> -1
-            .if dword [esi+edi+downtime_tick_offset] > 0
-                mov eax, dword [newprocesstime]
-                sub eax, dword [esi+edi+downtime_tick_offset]
-                add word [esi+edi+downtime_offset],ax
-                
-                .if word [esi+edi+downtime_offset] >= TIME_FOR_NEXT_STAGE
-                    add word [esi+edi+hung_stage_offset],1
-                    .if word [esi+edi+hung_stage_offset] = 7
-                        movzx eax, word [esi+edi+proc_name_offset]
-                        stdcall DrawDead, eax
-                        stdcall deleteprocess
-                        
-                        inc [Reset_count]
-                        .if [Reset_count] = GAMEOVER
-                            ; game over
-                            invoke ExitProcess, 0
-                        .endif
-                    .endif                             
-                    mov word [esi+edi+downtime_offset],0
-                .endif
-            .endif
-            mov eax, dword [newprocesstime]
-            mov dword [esi+edi+downtime_tick_offset],eax
-        .endif
 
-        add edi,process_offset
-        cmp edi, dword [Process_size]
-        jne .time_loopstart
-
-    mov esi,dword[CPU]
-    mov edi,0 ; offset in process array
-    .time_loopstart2:
-        .if word[esi+edi+cpu_proc_name_offset] <> -1
-            .if word [esi+edi+cpu_executed_offset] <> 0
-                    .if dword [esi+edi+cpu_uptime_tick_offset] > 0 ; need to check hungstage
-                        mov eax, dword [timer]
-                        sub eax, dword [esi+edi+cpu_uptime_tick_offset]
-                        
-    
-                        .if word [esi+edi+cpu_hung_stage_offset] > 1
-                            add word [esi+edi+cpu_uptime_offset],ax
-                            .if word [esi+edi+cpu_uptime_offset] >= TIME_FOR_REFRESH
-                                mov word [esi+edi+cpu_hung_stage_offset],1
-                                mov word [esi+edi+cpu_uptime_offset],0
-                            .endif
-                        .else
-                            .if word [esi+edi+cpu_hung_stage_offset] = 1
-                                add word [esi+edi+cpu_finaltime_offset],ax
-                                .if word [esi+edi+cpu_finaltime_offset] >= TIME_FOR_BEREADY
-                                    ;stdcall deleteprocess ; another part
-                                    mov word[esi+edi+cpu_hung_stage_offset],0
-                                .endif
-                            .endif
-                        .endif
-                        
-                    .endif
-                    mov eax, dword [timer]
-                    mov dword [esi+edi+cpu_uptime_tick_offset],eax
-            .else
-                .if dword [esi+edi+cpu_downtime_tick_offset] > 0
-                    mov eax, dword [newprocesstime]
-                    sub eax, dword [esi+edi+cpu_downtime_tick_offset]
-                    add word [esi+edi+cpu_downtime_offset],ax
-                    
-                    .if word [esi+edi+cpu_downtime_offset] >= TIME_FOR_NEXT_STAGE
-                        add word [esi+edi+cpu_hung_stage_offset],1
-                        .if word [esi+edi+cpu_hung_stage_offset] = 7
-                            movzx eax, word [esi+edi+cpu_proc_name_offset]
-                            stdcall DrawDead, eax
-                            stdcall deletecpu
-                            inc [Reset_count]
-                            .if [Reset_count] = GAMEOVER
-                                ; game over
-                                invoke ExitProcess, 0
-                            .endif
-                        .endif                             
-                        mov word [esi+edi+cpu_downtime_offset],0
-                    .endif
-                .endif
-                mov eax, dword [newprocesstime]
-                mov dword [esi+edi+cpu_downtime_tick_offset],eax
-            .endif
-        .endif
-        add edi,CPU_offset
-        cmp edi, dword [CPU_size]
-        jne .time_loopstart2
-
-
-        
-ret
-endp
 
 proc GetEdi uses ebx, name: dword, offset: dword
     
@@ -593,50 +456,7 @@ proc GetEdi uses ebx, name: dword, offset: dword
     ret
 endp
 
-proc strlen uses ecx, str: dword
-    mov esi, [str]
-    xor ecx, ecx
-    .startloop:
-        cmp byte [esi + ecx], 0
-        je  .loopend
-        inc ecx
-        jmp .startloop
-    .loopend:
-    mov eax,ecx
-    ret
-endp
 
-proc concatinate uses edi esi ecx ebx, str1: dword, str2: dword, resultbuffer: dword, needclean: dword
-
-    .if [needclean] = 1
-        stdcall strclean, [resultbuffer]
-    .endif
-
-    stdcall strlen, [str1]
-    mov ecx,eax
-    mov edi, [resultbuffer]
-    rep movsb
-    
-    mov ebx,eax ; first len
-
-
-    stdcall strlen, [str2]
-    mov edi, [resultbuffer]
-    add edi,ebx ; start for second str
-    mov ecx,eax ; second len
-    rep movsb
-ret
-endp
-
-proc strclean uses esi edi ecx, str: dword
-    stdcall strlen, [str]
-    mov ecx,eax
-    mov edi, [str]        
-    mov eax, 0                      
-    cld                           
-    rep stosd 
-    ret
-endp
 ; index - index disk or ram to delete
 proc deletefromdiskram uses esi edi ecx edx ebx, index: dword, offset: dword, arr: dword
     stdcall GetEdi,[index],[offset]
@@ -646,116 +466,6 @@ ret
 endp
 
 
-; comparator2 push on 1 - ram, 2 - disk
-; comparator1 if <> -1 - index of ram or disk to delete; depends on comparator2 
-proc diskrampush uses edi esi ecx, process_topush: dword , comparator1: dword, comparator2: dword
-    locals
-        arr1 dd ?
-        size1 dd ?
-        offset1 dd ?
-        arr2 dd ?
-        offset2 dd ?
-    endl
-    push ecx ; save currentcellcount for function
-    .if dword[comparator2] = 1
-        mov eax,[RAM]
-        mov [arr1],eax
-        mov eax,[RAM_size]
-        mov [size1],eax
-        mov [offset1],RAM_offset
-        mov eax,[DISK]
-        mov [arr2],eax
-        mov [offset2],DISK_offset
-    .else
-        mov eax,[RAM]
-        mov [arr2],eax
-        mov [offset2],RAM_offset
-        mov eax,[DISK]
-        mov [arr1],eax
-        mov eax,[DISK_size]
-        mov [size1],eax
-        mov [offset1],DISK_offset
-    .endif
-    mov esi, dword[processes]
-    stdcall GetEdi, dword[process_topush],process_offset
-    movzx eax, word[esi+edi+proc_name_offset]
-    mov esi, dword[arr1]
-    mov edi, 0
-    .loopstart:
-        .if word[esi+edi+tmp_offset] = -1
-            mov word[esi+edi+tmp_offset],ax
-            jmp .endloop
-        .else
-            add edi,[offset1]
-            cmp edi, dword [size1]
-            jne .loopstart
-        .endif
-
-    .endloop:
-    .if edi >= dword [size1]
-        mov eax,-1
-    .else 
-        .if [comparator1] <> -1
-            stdcall deletefromdiskram,[comparator1],[offset2],[arr2]
-        .endif
-        mov eax,0
-        .endif
-    pop ecx
-    ret
-endp
-
-proc RAMpush_process uses ecx edi esi, process_topush: dword
-    locals
-        currentcount dw 0
-    endl
-    mov cx, word[esi+edi+cells_count_offset]
-    .loopstart:
-
-        stdcall diskrampush, dword[process_topush],-1,1
-        .if eax = -1
-            stdcall diskrampush, dword[process_topush],-1,2
-        .endif
-        inc word[currentcount]
-        cmp word[currentcount],cx
-        jb .loopstart
-    ret
-endp
-
-
-proc CPUpush, proc_index: dword
-
-    mov esi, dword[CPU]
-    mov edi, 0
-    .start_loop:
-        .if word[esi+edi+cpu_proc_name_offset] <> -1
-            add edi,CPU_offset
-            .if edi < dword[CPU_size]
-                jmp .start_loop
-            .endif
-        .endif
-    .if edi < dword[CPU_size]
-        stdcall movproctocpu, dword [proc_index]
-        .if word[esi+edi+was_on_CPU_offset] = 0
-            stdcall RAMpush_process, dword[proc_index]
-            mov word[esi+edi+was_on_CPU_offset],1
-        .endif  
-        mov word[esi+edi+proc_name_offset],-1
-    .else
-        mov eax,-1
-    .endif
-    ret
-endp
-
-proc CPUpop uses esi edi ecx ebx edx, process_topop: dword
-
-    stdcall newprocess, 2, dword[process_topop]
-    mov esi, dword[CPU]
-    stdcall GetEdi, dword[process_topop],CPU_offset
-    mov word[esi+edi+cpu_proc_name_offset], -1
-    
-    
-ret
-endp
 
 
 proc generateIO
@@ -838,13 +548,6 @@ ret
 
 endp
 
-
-
-
-
-
-
-
 section '.idata' import data readable writeable
   library kernel32, 'KERNEL32.DLL',\
           user32, 'USER32.DLL',\
@@ -866,3 +569,6 @@ section '.idata' import data readable writeable
   include 'api\user32.inc'
   include 'Graphics.ASM'
   include 'Ini.ASM'
+  include 'Strings.ASM'
+  include 'Time.ASM'
+  include 'PushPop.ASM'
