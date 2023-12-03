@@ -44,7 +44,7 @@ section '.data' data readable writeable
     Process_size dd ? ; variable for the size off the process array
     Real_process_size dd ?
     Random_probability dw 1
-    Random_IOdelimiter dw 10000
+    Random_IOdelimiter dw 1000
     Random_RAMdelimiter dw 4
     NeedIOCount dd 0
 
@@ -110,8 +110,9 @@ section '.data' data readable writeable
 
     ;FROOOOOOOOOOOOOOOOOOOOONT
 
-    Colorarray dd 0x00999900,0x0000CC00,0x0000FFFF,0x0000B7FF,0x000000FF,0x000000A6,0x0000054f
-
+    Colorarray dd 0x00fff046,0x0000ff00,0x0000FFFF,0x00008aFF,0x000808FF,0x000000A6,0x00250a41
+    Smilesarray dd 0,0,0,0,0,0,0
+    Hourglassesarray dd 0,0,0,0,0,0,0
     margin_top = 20
     margin_left = 30
     margin_right = 30
@@ -119,7 +120,7 @@ section '.data' data readable writeable
 
     text_margin_top = 10
     text_margin_left = 30
-    text_margin_right = 0
+    text_margin_right = 4
     text_margin_bottom = 45
 
     textpage_margin_top = 5
@@ -179,12 +180,20 @@ section '.data' data readable writeable
     PAGEQIUTS_Y2 dd margin_top+header_height+header_cpu_gap+square_size+cpu_middle_gap+header_height+middle_process_gap+square_size*5+cpu_cpu_gap*4+proc_foottername_gap+header_height+foottername_footterproc_gap+square_size
 
     DISKY1 dd margin_top+header_height+header_cpu_gap+square_size+cpu_middle_gap+header_height+middle_process_gap
-    ;Gemoji db 'D:\BSUIR\ASSembly\course_2\grinning_face_emoji.bmp', 0
-    ;Gemoji db 'D:\BSUIR\ASSembly\course_2\grinning_face_emoji2.bmp', 0
-    ;Gemoji db 'D:\BSUIR\ASSembly\course_2\images\grinning_face_emoji.bmp', 0
-    Gemoji db 'D:\BSUIR\ASSembly\course_2\images\cold_face_emoji.bmp', 0
-    ;Gemoji db 'D:\BSUIR\ASSembly\course_2\images\cold_face_emoji.png', 0
-    ;Gemoji db 'i1.jpg',0
+    
+    ;Gemoji db 'D:\BSUIR\ASSembly\course_2\images\cold_face_emoji.bmp', 0
+    emoji0 db './images/smiling_face_with_halo_emoji.bmp', 0
+    emoji1 db './images/grinning_face_emoji.bmp', 0
+    emoji2 db './images/slightly_smiling_face_emoji.bmp', 0
+    emoji3 db './images/neutral_face_emoji.bmp', 0
+    emoji4 db './images/frowning_face_emoji.bmp', 0
+    emoji5 db './images/loudly_crying_face_emoji.bmp', 0
+    emoji6 db './images/cold_face_emoji.bmp', 0
+    emoji7 db './images/skull_emoji.bmp', 0
+
+    emoji8 db './images/hourglasses/0.bmp', 0
+    hg db './images/hourglasses/', 0
+    bmp db '.bmp',0
 
 section '.text' code readable executable
   
@@ -211,6 +220,10 @@ proc start
     invoke GetProcessHeap
     mov dword[myheap], eax
 
+    ; image
+    invoke CreateCompatibleDC, [hDC]
+    mov [hImageDC], eax
+
     ; draw backgroundcolor
     invoke CreateSolidBrush, 0x00000000 
     mov [hBrush], eax
@@ -219,14 +232,14 @@ proc start
     invoke  DeleteObject, [hBrush]
 
     ; IMAGE
-    invoke LoadImage, [hDC], Gemoji, IMAGE_BITMAP, 0, 0,LR_DEFAULTCOLOR+LR_DEFAULTSIZE+LR_LOADFROMFILE
-    mov [hImage], eax
-    invoke CreateCompatibleDC, [hDC]
-    mov [hImageDC], eax
-    mov eax,[hImage]
-    invoke SelectObject, [hImageDC], eax
-    invoke BitBlt, [hDC], 500, 500, 30, 30, [hImageDC], 0, 0, SRCCOPY
-    invoke DeleteDC, [hImageDC]
+    ;invoke LoadImage, [hDC], Gemoji, IMAGE_BITMAP, 0, 0,LR_DEFAULTCOLOR+LR_DEFAULTSIZE+LR_LOADFROMFILE
+    ;mov [hImage], eax
+    ;invoke CreateCompatibleDC, [hDC]
+    ;mov [hImageDC], eax
+    ;mov eax,[hImage]
+    ;invoke SelectObject, [hImageDC], eax
+    ;invoke BitBlt, [hDC], 500, 500, 30, 30, [hImageDC], 0, 0, SRCCOPY
+    ;invoke DeleteDC, [hImageDC]
 
     ; IMAGE
 
@@ -290,6 +303,7 @@ proc start
             pusha
             stdcall DrawFootter
             popa
+
         ;.endif
         pusha
         stdcall timeupdate
@@ -303,6 +317,7 @@ proc start
 
     invoke  ShowWindow, [hwnd], SW_SHOWNORMAL
     invoke  UpdateWindow, [hwnd]
+    invoke DeleteDC, [hImageDC]
 
 
     ; timer start

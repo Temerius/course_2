@@ -232,5 +232,51 @@ proc initialisation, a: DWORD
     imul eax,ecx
     add dword[DISKY1],eax
     add dword[DISKY1],ram_disk_gap
+
+    mov edi, Smilesarray
+    mov esi, 0
+    invoke LoadImage, [hDC], emoji0, IMAGE_BITMAP, 0, 0,LR_DEFAULTCOLOR+LR_DEFAULTSIZE+LR_LOADFROMFILE
+    mov dword[edi+esi],eax
+    add esi,4
+    invoke LoadImage, [hDC], emoji1, IMAGE_BITMAP, 0, 0,LR_DEFAULTCOLOR+LR_DEFAULTSIZE+LR_LOADFROMFILE
+    mov dword[edi+esi],eax
+    add esi,4
+    invoke LoadImage, [hDC], emoji2, IMAGE_BITMAP, 0, 0,LR_DEFAULTCOLOR+LR_DEFAULTSIZE+LR_LOADFROMFILE
+    mov dword[edi+esi],eax
+    add esi,4
+    invoke LoadImage, [hDC], emoji3, IMAGE_BITMAP, 0, 0,LR_DEFAULTCOLOR+LR_DEFAULTSIZE+LR_LOADFROMFILE
+    mov dword[edi+esi],eax
+    add esi,4
+    invoke LoadImage, [hDC], emoji4, IMAGE_BITMAP, 0, 0,LR_DEFAULTCOLOR+LR_DEFAULTSIZE+LR_LOADFROMFILE
+    mov dword[edi+esi],eax
+    add esi,4
+    invoke LoadImage, [hDC], emoji5, IMAGE_BITMAP, 0, 0,LR_DEFAULTCOLOR+LR_DEFAULTSIZE+LR_LOADFROMFILE
+    mov dword[edi+esi],eax
+    add esi,4
+    invoke LoadImage, [hDC], emoji6, IMAGE_BITMAP, 0, 0,LR_DEFAULTCOLOR+LR_DEFAULTSIZE+LR_LOADFROMFILE
+    mov dword[edi+esi],eax
+     add esi,4
+    invoke LoadImage, [hDC], emoji7, IMAGE_BITMAP, 0, 0,LR_DEFAULTCOLOR+LR_DEFAULTSIZE+LR_LOADFROMFILE
+    mov dword[edi+esi],eax
+   
+    mov edi, Hourglassesarray
+    mov esi, 0
+    mov ecx, 0
+    .startloop:
+        push ecx
+        stdcall strclean, buffer
+        stdcall IntToStr, ecx,buffer,0
+        stdcall concatinate, hg,buffer,result_buffer,1
+        stdcall concatinate, result_buffer,bmp,result_buffer,0
+        ;invoke MessageBox, [hwnd], result_buffer, NULL, MB_ICONERROR + MB_OK
+        invoke LoadImage, [hDC], result_buffer, IMAGE_BITMAP, 0, 0,LR_DEFAULTCOLOR+LR_DEFAULTSIZE+LR_LOADFROMFILE
+        stdcall strclean, result_buffer
+        mov dword[edi+esi],eax
+        add esi,4
+        pop ecx
+        inc ecx
+        cmp esi, 28
+        jb .startloop
+
 ret
 endp

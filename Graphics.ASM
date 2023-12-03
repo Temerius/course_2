@@ -131,12 +131,13 @@ proc DrawOneProcess uses edi esi ebx edx ecx, procname: dword, x1 : dword, y1: d
     mov [hBrush], eax
     invoke CreatePen, PS_SOLID, 2, [current_color]
     mov [hPen], eax
-    ;invoke SelectObject, [hDC], [hBrush]
     invoke SelectObject, [hDC], [hPen]
     invoke SelectObject, [hDC], [hBrush]
     invoke Rectangle, [hDC], [x1],[y1],[x2],[y2]
     invoke  DeleteObject, [hBrush]
     invoke  DeleteObject, [hPen]
+    
+    
     ; draw text
     mov eax, [x1]
     add eax,text_margin_left
@@ -151,15 +152,60 @@ proc DrawOneProcess uses edi esi ebx edx ecx, procname: dword, x1 : dword, y1: d
     sub eax,text_margin_bottom
     mov [texty2],eax
     
-    stdcall strclean, buffer
 
+    stdcall strclean, buffer
     mov eax, dword[procname]
     stdcall IntToStr, eax,buffer,0
     stdcall concatinate, PID,space,result_buffer,1
     stdcall concatinate, result_buffer,buffer,result_buffer,0
-    stdcall MyDrawText, [current_color],0x00000000,15,[textx1],[texty1],[textx2],[texty2],result_buffer,DT_LEFT
-    ;
+    stdcall MyDrawText, [current_color],0x00000000,17,[textx1],[texty1],[textx2],[texty2],result_buffer,DT_CENTER
     invoke  DeleteObject, [hPen]
+
+
+    .if [comparator] = 1
+        movzx eax, word[esi+edi+hung_stage_offset]
+    .else 
+        movzx eax, word[esi+edi+cpu_hung_stage_offset]
+    .endif
+    imul eax,4
+    push edi
+    push esi
+    mov edi, Smilesarray         
+    add edi,eax
+    mov eax,[edi]
+    mov esi, dword[textx1]
+    sub esi, 30
+    mov edi, dword[texty1]
+    sub edi, 5
+    stdcall DrawImage,eax,esi,edi,35,35
+    pop esi
+    pop edi
+
+
+
+    .if [comparator] = 1
+        movzx ecx, word[esi+edi+need_IO_offset]
+        movzx eax, word[esi+edi+hung_stage_offset]
+    .else 
+        movzx eax, word[esi+edi+cpu_hung_stage_offset]
+        movzx ecx, word[esi+edi+cpu_need_IO_offset]
+    .endif
+    .if ecx = 1
+        imul eax,4
+        push edi
+        push esi
+        mov edi, Hourglassesarray         
+        add edi,eax
+        mov eax,[edi]
+        mov esi, dword[textx1]
+        add esi, 5
+        mov edi, dword[texty2]
+        add edi, 10
+        stdcall DrawImage,eax,esi,edi,35,35
+        pop esi
+        pop edi
+    .endif
+
     ;invoke CreateSolidBrush, 0x00000000
     ;mov [hBrush], eax
     ;invoke SelectObject, [hDC], [hBrush]
@@ -333,7 +379,7 @@ proc DrawOnePage uses edi esi ecx ebx edx,procname: dword, x1 : dword, y1: dword
     stdcall IntToStr, eax,buffer,0
     stdcall concatinate, PID,space,result_buffer,1
     stdcall concatinate, result_buffer,buffer,result_buffer,0
-    stdcall MyDrawText, dword[currentcolor],0x00000000,10,[textx1],[texty1],[textx2],[texty2],result_buffer,DT_LEFT+DT_SINGLELINE+DT_VCENTER
+    stdcall MyDrawText, dword[currentcolor],0x00000000,13,[textx1],[texty1],[textx2],[texty2],result_buffer,DT_LEFT+DT_SINGLELINE+DT_VCENTER
     stdcall strclean, result_buffer
 ret
 endp
@@ -411,9 +457,19 @@ proc DrawDead uses esi edi ebx ecx edx, procname: dword
     stdcall IntToStr, eax,buffer,0
     stdcall concatinate, PID,space,result_buffer,1
     stdcall concatinate, result_buffer,buffer,result_buffer,0
-    stdcall MyDrawText, [current_color],0x00000000,15,[textx1],[texty1],[textx2],[texty2],result_buffer,DT_LEFT
-    ;
+    stdcall MyDrawText, [current_color],0x00000000,17,[textx1],[texty1],[textx2],[texty2],result_buffer,DT_CENTER
     invoke  DeleteObject, [hPen]
+
+    mov edi, Smilesarray         
+    add edi,28
+    mov eax,[edi]
+    mov esi, dword[textx1]
+    sub esi, 30
+    mov edi, dword[texty1]
+    sub edi, 5
+    stdcall DrawImage,eax,esi,edi,35,35
+
+
 ret
 endp
 
@@ -441,14 +497,11 @@ proc MyDrawText, bgcolor: dword,textcolor: dword,fontsize: dword,x1: dword, y1: 
 endp
 
 proc DrawImage, image: dword, x: dword, y: dword, xsize: dword, ysize: dword
-    invoke LoadImage, [hDC], [image], IMAGE_BITMAP, 0, 0,LR_DEFAULTCOLOR+LR_DEFAULTSIZE+LR_LOADFROMFILE
-    mov [hImage], eax 
-    invoke CreateCompatibleDC, [hDC]
-    mov [hImageDC], eax
-    mov eax,[hImage]
+
+    mov eax,[image]
     invoke SelectObject, [hImageDC], eax
     invoke BitBlt, [hDC], [x], [y], [xsize], [ysize], [hImageDC], 0, 0, SRCCOPY
-    invoke DeleteDC, [hImageDC]
+    
     ret
 endp
 
