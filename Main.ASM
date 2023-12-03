@@ -44,7 +44,7 @@ section '.data' data readable writeable
     Process_size dd ? ; variable for the size off the process array
     Real_process_size dd ?
     Random_probability dw 1
-    Random_IOdelimiter dw 1000
+    Random_IOdelimiter dw 10000
     Random_RAMdelimiter dw 4
     NeedIOCount dd 0
 
@@ -111,7 +111,7 @@ section '.data' data readable writeable
     ;FROOOOOOOOOOOOOOOOOOOOONT
 
     Colorarray dd 0x00fff046,0x0000ff00,0x0000FFFF,0x00008aFF,0x000808FF,0x000000A6,0x00250a41
-    Smilesarray dd 0,0,0,0,0,0,0
+    Smilesarray dd 0,0,0,0,0,0,0,0
     Hourglassesarray dd 0,0,0,0,0,0,0
     margin_top = 20
     margin_left = 30
@@ -768,13 +768,15 @@ proc generateIO
         mov edx, 0
         .if word[esi+edi+cpu_proc_name_offset] <> -1
             .if word[esi+edi+cpu_hung_stage_offset] <> 0
-                .if word[esi+edi+cpu_need_IO_offset] = 0
-                    rdrand eax
-                    div [Random_IOdelimiter]
-                    inc edx
-                    .if edx <= ecx
-                        mov word[esi+edi+cpu_need_IO_offset],1
-                        inc [NeedIOCount]
+                .if word[esi+edi+cpu_executed_offset] = 1
+                    .if word[esi+edi+cpu_need_IO_offset] = 0
+                        rdrand eax
+                        div [Random_IOdelimiter]
+                        inc edx
+                        .if edx <= ecx
+                            mov word[esi+edi+cpu_need_IO_offset],1
+                            inc [NeedIOCount]
+                        .endif
                     .endif
                 .endif
             .endif

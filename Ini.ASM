@@ -264,13 +264,8 @@ proc initialisation, a: DWORD
     mov ecx, 0
     .startloop:
         push ecx
-        stdcall strclean, buffer
-        stdcall IntToStr, ecx,buffer,0
-        stdcall concatinate, hg,buffer,result_buffer,1
-        stdcall concatinate, result_buffer,bmp,result_buffer,0
-        ;invoke MessageBox, [hwnd], result_buffer, NULL, MB_ICONERROR + MB_OK
-        invoke LoadImage, [hDC], result_buffer, IMAGE_BITMAP, 0, 0,LR_DEFAULTCOLOR+LR_DEFAULTSIZE+LR_LOADFROMFILE
-        stdcall strclean, result_buffer
+        stdcall IntToStr, ecx,emoji8,21
+        invoke LoadImage, [hDC], emoji8, IMAGE_BITMAP, 0, 0,LR_DEFAULTCOLOR+LR_DEFAULTSIZE+LR_LOADFROMFILE
         mov dword[edi+esi],eax
         add esi,4
         pop ecx

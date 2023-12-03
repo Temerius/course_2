@@ -452,7 +452,6 @@ proc DrawDead uses esi edi ebx ecx edx, procname: dword
     add dword[PAGEQIUTS_X2],square_size+dead_dead_gap
     
     stdcall strclean, buffer
-
     mov eax, dword[procname]
     stdcall IntToStr, eax,buffer,0
     stdcall concatinate, PID,space,result_buffer,1
@@ -526,7 +525,7 @@ proc IntToStr uses edx ebx edi esi ecx, num, buf, startBufPos
     jnz .ConvertLoop
 
 
-    mov byte[esi], 0 ; zero terminated string 
+    ;mov byte[esi], 0 ; zero terminated string 
 
     dec esi ; got last digit pos in string 
     mov edi, esi ; save last pos
