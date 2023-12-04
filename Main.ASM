@@ -261,78 +261,73 @@ proc start
     stdcall CPUpush,4
     ;  main loop
 
-    fnop
     mov ecx,100000
     time_loop:
-        ;.if dword[time] = 0
-            pusha
-            stdcall drawCPU
-            popa
-            pusha
-            stdcall isexecuted
-            popa
-            pusha
-            stdcall DrawHeader
-            popa
-            pusha
-            stdcall DrawMidPart
-            popa
-            pusha
-            stdcall DrawProcesses
-            popa
-            pusha
-            stdcall DrawPages,1
-            popa
-            pusha
-            stdcall DrawDisk
-            popa
-            pusha
-            stdcall DrawPages,2
-            popa
-            pusha
-            stdcall DrawFootter
-            popa
+        pusha
+        stdcall drawCPU
+        popa
+        pusha
+        stdcall isexecuted
+        popa
+        pusha
+        stdcall DrawHeader
+        popa
+        pusha
+        stdcall DrawMidPart
+        popa
+        pusha
+        stdcall DrawProcesses
+        popa
+        pusha
+        stdcall DrawPages,1
+        popa
+        pusha
+        stdcall DrawDisk
+        popa
+        pusha
+        stdcall DrawPages,2
+        popa
+        pusha
+        stdcall DrawFootter
+        popa
 
-        ;.endif
         pusha
         stdcall timeupdate
         popa
         pusha
         stdcall generateIO
         popa
-        loop time_loop
-        ;jmp time_loop
-    invoke  ReleaseDC, [hwnd], [hDC]
 
-    invoke  ShowWindow, [hwnd], SW_SHOWNORMAL
-    invoke  UpdateWindow, [hwnd]
-    invoke DeleteDC, [hImageDC]
+        msg_loop:
+            invoke GetMessage, msg, NULL, 0, 0
+            cmp eax, 1
+            jb end_loop
+            jne .continue
+  
+            invoke TranslateMessage, msg
+            invoke DispatchMessage, msg
 
+            jmp .continue
+        .continue:
+            jmp time_loop
 
-    ; timer start
+        invoke  ReleaseDC, [hwnd], [hDC]
+        invoke  ShowWindow, [hwnd], SW_SHOWNORMAL
+        invoke  UpdateWindow, [hwnd]
+        invoke DeleteDC, [hImageDC]
+           
 
     
-    ;
 
-    
-
-    msg_loop:
-        invoke GetMessage, msg, NULL, 0, 0
-        cmp eax, 1
-        jb end_loop
-        jne msg_loop
-        
-        invoke TranslateMessage, msg
-        invoke DispatchMessage, msg
         ;invoke SetDIBitsToDevice, [hDC], 0, 0, Width, Height, 0, 0, 0, Height, [heapMemory], bmi, 0
-        jmp msg_loop
+        
 
     error:
         invoke MessageBox, NULL, _error, NULL, MB_ICONERROR + MB_OK
 
     end_loop:
         invoke HeapFree, [myheap], 0, [heapMemory]
-
+        invoke DeleteDC, [hImageDC]
         invoke ExitProcess, [msg.wParam]
 
 
