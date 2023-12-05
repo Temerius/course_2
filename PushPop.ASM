@@ -1,6 +1,6 @@
-; comparator2 push on 1 - ram, 2 - disk
+; comparator2 push on 1 - ram, 2 - disk  
 ; comparator1 if <> -1 - index of ram or disk to delete; depends on comparator2 
-proc diskrampush uses edi esi ecx, process_topush: dword , comparator1: dword, comparator2: dword
+proc diskrampush uses edi esi ecx ebx edx, process_topush: dword , comparator1: dword, comparator2: dword
     locals
         arr1 dd ?
         size1 dd ?
@@ -28,9 +28,13 @@ proc diskrampush uses edi esi ecx, process_topush: dword , comparator1: dword, c
         mov [size1],eax
         mov [offset1],DISK_offset
     .endif
-    mov esi, dword[processes]
-    stdcall GetEdi, dword[process_topush],process_offset
-    movzx eax, word[esi+edi+proc_name_offset]
+    .if [process_topush] <> -1
+        mov esi, dword[processes]
+        stdcall GetEdi, dword[process_topush],process_offset
+        movzx eax, word[esi+edi+proc_name_offset]
+    .else
+        movzx eax, word[esi+edi+tmp_offset]
+    .endif
     mov esi, dword[arr1]
     mov edi, 0
     .loopstart:
@@ -40,7 +44,7 @@ proc diskrampush uses edi esi ecx, process_topush: dword , comparator1: dword, c
         .else
             add edi,[offset1]
             cmp edi, dword [size1]
-            jne .loopstart
+            jb .loopstart
         .endif
 
     .endloop:

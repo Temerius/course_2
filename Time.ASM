@@ -119,10 +119,7 @@ proc timeupdate
         .endif
         add edi,CPU_offset
         cmp edi, dword [CPU_size]
-        jne .time_loopstart2
-
-
-        
+        jne .time_loopstart2    
 ret
 endp
 

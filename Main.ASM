@@ -9,6 +9,19 @@
 ; Code
 format PE GUI 4.0
 entry start
+
+
+macro switch value 
+        { 
+                xor eax, eax 
+                mov eax, value 
+        } 
+  
+macro case value, label  
+        { 
+            cmp eax, value 
+            je label 
+        }
 include 'win32a.inc'
 
 section '.data' data readable writeable
@@ -26,6 +39,8 @@ section '.data' data readable writeable
     hFont dd ?
     hImage dd ?
     hImageDC dd ?
+    mouseX dd ?
+    mouseY dd ?
     rect RECT
     
     bmi BITMAPINFOHEADER
@@ -44,7 +59,7 @@ section '.data' data readable writeable
     Process_size dd ? ; variable for the size off the process array
     Real_process_size dd ?
     Random_probability dw 1
-    Random_IOdelimiter dw 10000
+    Random_IOdelimiter dw 1000
     Random_RAMdelimiter dw 4
     NeedIOCount dd 0
 
@@ -154,7 +169,16 @@ section '.data' data readable writeable
     proc_in_raw_count = 7
     pages_in_raw_count = 12
     raw_count = 10
-  
+
+
+    procsquareY1 = margin_top+header_height+header_cpu_gap+square_size+cpu_middle_gap+header_height+middle_process_gap
+    procsquareY2 = margin_top+header_height+header_cpu_gap+square_size+cpu_middle_gap+header_height+middle_process_gap+square_size*5+cpu_cpu_gap*4
+
+    cpusquareY1 = margin_top+header_height+header_cpu_gap
+    cpusquareY2 = margin_top+header_height+header_cpu_gap + square_size
+
+    ramsquareY1 = margin_top+header_height+header_cpu_gap+square_size+cpu_middle_gap+header_height+middle_process_gap
+
     buffer db 16 dup (?)
     Arial db 'Arial', 0
 
@@ -237,76 +261,32 @@ proc start
     invoke GetTickCount
     mov dword[timer],eax
 
-    stdcall CPUpush,0
+    ;stdcall CPUpush,0
 
-    stdcall CPUpush,2
+    ;stdcall CPUpush,2
 
-    stdcall CPUpush,1
-    stdcall CPUpush,3
+    ;stdcall CPUpush,1
+    ;stdcall CPUpush,3
 
     ;stdcall CPUpush,9
-    stdcall CPUpop,0
-    stdcall CPUpush,4
-    stdcall CPUpush,0
-    stdcall CPUpush,5
-    stdcall CPUpop,5
-    stdcall CPUpush,6
-    stdcall CPUpop,5
-    stdcall CPUpush,7
-    stdcall CPUpop,5
-    stdcall CPUpush,8
-    stdcall CPUpop,5
-    stdcall CPUpush,9
-    stdcall CPUpop,5
-    stdcall CPUpush,4
+    ;stdcall CPUpop,0
+    ;stdcall CPUpush,4
+    ;stdcall CPUpush,0
+    ;stdcall CPUpush,5
+    ;stdcall CPUpop,5
+    ;stdcall CPUpush,6
+    ;stdcall CPUpop,5
+    ;stdcall CPUpush,7
+    ;stdcall CPUpop,5
+    ;stdcall CPUpush,8
+    ;stdcall CPUpop,5
+    ;stdcall CPUpush,9
+    ;stdcall CPUpop,5
+    ;stdcall CPUpush,4
     ;  main loop
 
-    fnop
-    mov ecx,100000
-    time_loop:
-        ;.if dword[time] = 0
-            pusha
-            stdcall drawCPU
-            popa
-            pusha
-            stdcall isexecuted
-            popa
-            pusha
-            stdcall DrawHeader
-            popa
-            pusha
-            stdcall DrawMidPart
-            popa
-            pusha
-            stdcall DrawProcesses
-            popa
-            pusha
-            stdcall DrawPages,1
-            popa
-            pusha
-            stdcall DrawDisk
-            popa
-            pusha
-            stdcall DrawPages,2
-            popa
-            pusha
-            stdcall DrawFootter
-            popa
+    
 
-        ;.endif
-        pusha
-        stdcall timeupdate
-        popa
-        pusha
-        stdcall generateIO
-        popa
-        loop time_loop
-        ;jmp time_loop
-    invoke  ReleaseDC, [hwnd], [hDC]
-
-    invoke  ShowWindow, [hwnd], SW_SHOWNORMAL
-    invoke  UpdateWindow, [hwnd]
-    invoke DeleteDC, [hImageDC]
 
 
     ; timer start
@@ -327,6 +307,11 @@ proc start
         ;invoke SetDIBitsToDevice, [hDC], 0, 0, Width, Height, 0, 0, 0, Height, [heapMemory], bmi, 0
         jmp msg_loop
 
+
+    invoke  ReleaseDC, [hwnd], [hDC]
+    invoke  ShowWindow, [hwnd], SW_SHOWNORMAL
+    invoke  UpdateWindow, [hwnd]
+    invoke DeleteDC, [hImageDC]
     error:
         invoke MessageBox, NULL, _error, NULL, MB_ICONERROR + MB_OK
 
@@ -339,17 +324,267 @@ proc start
     ret
 endp
 
-proc WindowProc uses ebx esi edi, hwnd, wmsg, wparam, lparam
-  cmp [wmsg], WM_DESTROY
-  je .wmdestroy
-  .defwndproc:
-  invoke DefWindowProc, [hwnd], [wmsg], [wparam], [lparam]
-  jmp .finish
-  .wmdestroy:
-  invoke PostQuitMessage, 0
-  xor eax, eax
-  .finish:
-  ret
+proc MainProc uses esi edi ebx edx ecx eax
+        pusha
+        stdcall drawCPU
+        popa
+        pusha
+        stdcall isexecuted
+        popa
+        pusha
+        stdcall DrawHeader
+        popa
+        pusha
+        stdcall DrawMidPart
+        popa
+        pusha
+        stdcall DrawProcesses
+        popa
+        pusha
+        stdcall DrawPages,1
+        popa
+        pusha
+        stdcall DrawDisk
+        popa
+        pusha
+        stdcall DrawPages,2
+        popa
+        pusha
+        stdcall DrawFootter
+        popa
+        pusha
+        stdcall timeupdate
+        popa
+        pusha
+        stdcall generateIO
+        popa
+ret
+endp
+proc WindowProc uses ebx, hWnd, uMsg, wParam, lParam
+   xor     ebx, ebx
+
+                switch  [uMsg]
+                case    WM_PAINT,       .onPaint0
+                case    WM_DESTROY,     .onDestroy
+                case    WM_KEYDOWN,     .onKeyDown0
+                case    WM_LBUTTONDOWN, .onLClick0
+
+                ; перечисляешь все события, которые обрабатываешь руками, здесь, в case. 
+                ; destroy и paint оставляй как у меня
+
+                ; вот эта ерундень обрабатывает остальное, что ты руками не обработал
+                ; ВАЖНО!!! её оставить 
+                invoke  DefWindowProc, [hWnd], [uMsg], [wParam], [lParam]
+
+                jmp     .Return
+     
+                ; после каждого РУКАМИ обработанного возвращаешь ноль (см конец)
+                .onPaint0:
+                        ; вызываешь ф-цию (больше для удобства), которая у тебя рисует 
+                        ; что рисует (в моём случае это каждый кадр)
+                        stdcall MainProc
+                jmp     .ReturnZero
+
+                .onKeyDown0:
+                        switch [wParam]
+                        case VK_ESCAPE, .onDestroy
+                jmp     .ReturnZero
+
+
+                .onLClick0:
+                    mov eax, [lParam]
+                    movsx ebx, ax
+                    mov dword[mouseX], ebx
+                    sar eax, 16 
+                    mov dword[mouseY], eax
+                    stdcall FindClick
+
+                jmp     .ReturnZero
+
+        ; ВАЖНО!!!!! эта штука завершает выполнение проги нормально
+        ; не трожь, даже если не нравится 
+        .onDestroy:
+        invoke  ExitProcess, 0
+
+        .ReturnZero:
+        xor     eax, eax
+
+        .Return:        
+        ret
+endp
+
+
+proc IsInSquare uses ebx ecx edx esi edi, x1: dword, y1: dword, x2: dword, y2: dword
+    mov edi, dword[mouseX]
+    mov esi, dword[mouseY]
+    mov eax, 0
+    .if edi >= [x1]
+        .if edi <= [x2]
+            .if esi >= [y1]
+                .if esi <= [y2]
+                    mov eax,1
+                .endif
+            .endif
+        .endif
+    .endif
+ret
+endp
+
+proc FindClick uses ebx ecx edx esi edi
+    mov edi, dword[mouseX]
+    mov esi, dword[mouseY]
+
+    movzx eax, word[CPU_count]
+    xor edx,edx
+    mov ecx, square_size
+    imul eax,ecx
+    mov ebx, eax
+
+    movzx eax, word[CPU_count]
+    dec eax
+    xor edx,edx
+    mov ecx, cpu_cpu_gap
+    imul eax,ecx
+    add ebx, eax
+    add ebx, margin_left
+
+    stdcall IsInSquare, margin_left, margin_top+header_height+header_cpu_gap, ebx,margin_top+header_height+header_cpu_gap+square_size
+    .if eax = 1
+        stdcall FindClickInCPU
+        jmp .return
+    .endif
+
+    stdcall IsInSquare, margin_left, procsquareY1, left_header_width,procsquareY2
+    .if eax = 1
+        stdcall FindClickInProc
+        jmp .return
+    .endif
+
+    movzx eax, word[RAM_lines_count]
+    xor edx,edx
+    mov ecx, page_height
+    imul eax,ecx
+    mov ebx, eax
+
+    movzx eax, word[RAM_lines_count]
+    dec eax
+    xor edx,edx
+    mov ecx, page_page_gap
+    imul eax,ecx
+    add ebx, eax
+    add ebx, ramsquareY1
+
+    stdcall IsInSquare, left_header_width, ramsquareY1, left_header_width+right_header_width,ebx
+    .if eax = 1
+        stdcall FindClickInRAM
+        jmp .return
+    .endif
+
+    .return:
+ret
+
+endp
+
+
+proc FindClickInCPU uses ebx ecx edx esi edi
+    mov esi, dword[CPU]
+    mov edi,0
+    local x1 dd margin_left
+    local y1 dd margin_top+header_height+header_cpu_gap
+    local x2 dd margin_left+square_size
+    local y2 dd margin_top+header_height+header_cpu_gap+square_size
+
+    .startloop:
+        stdcall IsInSquare, [x1], [y1],[x2], [y2]
+        .if eax = 1
+            movzx edx, word[esi+edi]
+            stdcall CPUpop, edx
+            jmp .return
+        .else
+            add [x1], square_size+cpu_cpu_gap
+            add [x2], square_size+cpu_cpu_gap
+            add edi,CPU_offset
+            cmp edi, dword[CPU_size]
+            jb .startloop
+        .endif
+
+    .return:
+ret
+endp
+
+proc FindClickInProc uses ebx ecx edx esi edi
+    mov esi, dword[processes]
+    mov edi,0
+    local x1 dd margin_left
+    local y1 dd procsquareY1
+    local x2 dd margin_left+square_size
+    local y2 dd procsquareY1+square_size
+    local proc_in_raw dd 0
+
+    .startloop:
+        stdcall IsInSquare, [x1], [y1],[x2], [y2]
+        inc [proc_in_raw]
+        .if eax = 1
+            movzx edx, word[esi+edi]
+            stdcall CPUpush, edx
+            jmp .return
+        .else
+            .if dword[proc_in_raw] = proc_in_raw_count
+                mov dword[x1],margin_left
+                mov dword[x2], margin_left+square_size
+                add dword[y1], square_size+cpu_cpu_gap
+                add dword[y2], square_size+cpu_cpu_gap
+                mov dword[proc_in_raw],0
+            .else
+                add dword[x1],square_size+cpu_cpu_gap
+                add dword[x2],square_size+cpu_cpu_gap
+            .endif
+            add edi,process_offset
+            cmp edi, dword[Process_size]
+            jb .startloop
+        .endif
+
+    .return:
+ret
+endp
+
+
+proc FindClickInRAM uses ebx ecx edx esi edi
+    mov esi, dword[RAM]
+    mov edi,0
+    local x1 dd left_header_width
+    local y1 dd ramsquareY1
+    local x2 dd left_header_width+page_width
+    local y2 dd ramsquareY1+page_height
+    local page_in_raw dd 0
+
+    .startloop:
+        stdcall IsInSquare, [x1], [y1],[x2], [y2]
+        inc [page_in_raw]
+        .if eax = 1
+            .if word[esi+edi+process_on_RAM_offset] <> -1
+                movzx ebx, word[esi+edi]
+                stdcall diskrampush, -1, ebx ,2
+            .endif
+            jmp .return
+        .else
+            .if dword[page_in_raw] = pages_in_raw_count
+                mov dword[x1],left_header_width
+                mov dword[x2], left_header_width+page_width
+                add dword[y1], page_height+page_page_gap
+                add dword[y2], page_height+page_page_gap
+                mov dword[page_in_raw],0
+            .else
+                add dword[x1],page_width+page_page_gap
+                add dword[x2],page_width+page_page_gap
+            .endif
+            add edi,RAM_offset
+            cmp edi, dword[RAM_size]
+            jb .startloop
+        .endif
+
+    .return:
+ret
 endp
 
 proc realloc
@@ -461,7 +696,7 @@ endp
 proc deletefromdiskram uses esi edi ecx edx ebx, index: dword, offset: dword, arr: dword
     stdcall GetEdi,[index],[offset]
     mov esi, dword[arr]
-    mov dword [esi+edi+tmp_offset],-1
+    mov word [esi+edi+tmp_offset],-1
 ret
 endp
 
