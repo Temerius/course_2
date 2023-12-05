@@ -356,7 +356,7 @@ proc MainProc uses esi edi ebx edx ecx eax
         stdcall timeupdate
         popa
         pusha
-        stdcall generateIO
+        ;stdcall generateIO
         popa
 ret
 endp
@@ -480,6 +480,16 @@ proc FindClick uses ebx ecx edx esi edi
         jmp .return
     .endif
 
+    mov ebx, dword[DISKY1]
+    add ebx, header_height+disk_page_gap
+    
+    stdcall IsInSquare, left_header_width, ebx, left_header_width+right_header_width,Height
+    .if eax = 1
+        stdcall FindClickInDISK, ebx
+        jmp .return
+    .endif
+
+
     .return:
 ret
 
@@ -580,6 +590,48 @@ proc FindClickInRAM uses ebx ecx edx esi edi
             .endif
             add edi,RAM_offset
             cmp edi, dword[RAM_size]
+            jb .startloop
+        .endif
+
+    .return:
+ret
+endp
+
+
+proc FindClickInDISK uses ebx ecx edx esi edi, Ystart: dword
+    mov esi, dword[DISK]
+    mov edi,0
+    local x1 dd left_header_width
+    local y1 dd 0
+    local x2 dd left_header_width+page_width
+    local y2 dd 0
+    local page_in_raw dd 0
+    mov eax, dword[Ystart]
+    mov [y1], eax
+    add eax, page_height
+    mov [y2], eax
+    .startloop:
+        stdcall IsInSquare, [x1], [y1],[x2], [y2]
+        inc [page_in_raw]
+        .if eax = 1
+            .if word[esi+edi+process_on_DISK_offset] <> -1
+                movzx ebx, word[esi+edi]
+                stdcall diskrampush, -1, ebx ,1
+            .endif
+            jmp .return
+        .else
+            .if dword[page_in_raw] = pages_in_raw_count
+                mov dword[x1],left_header_width
+                mov dword[x2], left_header_width+page_width
+                add dword[y1], page_height+page_page_gap
+                add dword[y2], page_height+page_page_gap
+                mov dword[page_in_raw],0
+            .else
+                add dword[x1],page_width+page_page_gap
+                add dword[x2],page_width+page_page_gap
+            .endif
+            add edi,DISK_offset
+            cmp edi, dword[DISK_size]
             jb .startloop
         .endif
 
