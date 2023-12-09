@@ -156,7 +156,7 @@ section '.data' data readable writeable
 
     ramsquareY1 = margin_top+header_height+header_cpu_gap+square_size+cpu_middle_gap+header_height+middle_process_gap
 
-    buffer db 16 dup (?)
+    buffer db 24 dup (?)
     Arial db 'Arial', 0
 
     result_buffer db 256 dup (?) 

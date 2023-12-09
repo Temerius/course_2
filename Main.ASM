@@ -63,17 +63,11 @@ proc start
     invoke CreateCompatibleDC, [hDC]
     mov [hImageDC], eax
 
-    ; draw backgroundcolor
-    invoke CreateSolidBrush, 0x00000000 
-    mov [hBrush], eax
-    invoke  SelectObject, [hDC],eax 
-    invoke Rectangle, [hDC], 0,0,dword[screen_width],dword[screen_height] 
-    invoke  DeleteObject, [hBrush]
+    stdcall DrawBackColor
 
-    stdcall initialisation,[myheap]
+    ;stdcall initialisation,[myheap]
 
-    invoke GetTickCount
-    mov dword[timer],eax
+    
 
 
 
@@ -105,6 +99,19 @@ proc start
     ret
 endp
 
+proc DrawBackColor uses esi edi ebx ecx edx
+    invoke CreatePen, PS_SOLID, 2,0x00000000
+    mov [hPen], eax
+    invoke CreateSolidBrush, 0x00000000 
+    mov [hBrush], eax
+    invoke SelectObject, [hDC], [hPen]
+    invoke SelectObject, [hDC], [hBrush]
+    invoke Rectangle, [hDC], 0,0,dword[screen_width],dword[screen_height] 
+    invoke  DeleteObject, [hBrush]
+    invoke  DeleteObject, [hPen]
+
+ret
+endp
 proc MainProc uses esi edi ebx edx ecx eax
         pusha
         stdcall drawCPU
@@ -143,43 +150,131 @@ ret
 endp
 
 
-proc DrawMainMenu 
-     invoke CreatePen, PS_SOLID, 2,0x00000000
-    mov [hPen], eax
-    invoke CreateSolidBrush, 0x00000000 
-    mov [hBrush], eax
-    invoke SelectObject, [hDC], [hPen]
-    invoke SelectObject, [hDC], [hBrush]
-    invoke Rectangle, [hDC], 0,0,dword[screen_width],dword[screen_height] 
-    invoke  DeleteObject, [hBrush]
-    invoke  DeleteObject, [hPen]
+proc DrawMainMenu uses edi esi ecx edx ebx
 
-    stdcall MyDrawText, 0x00000000,0x00FF0000,60,Name_x, Name_y,Name_x+Name_width,Name_y+Name_height,Game_name,DT_SINGLELINE+DT_CENTER+DT_VCENTER
+    local tmppen dd ?
 
-    stdcall MyDrawText, 0x00000000,0x00FFFFFF,40,Difficulty_x, Difficulty_y,Difficulty_x+Difficulty_width,Difficulty_y+Difficulty_height,SelectDifficulty,DT_SINGLELINE+DT_CENTER+DT_VCENTER
-
-    invoke CreateSolidBrush, 0x00FF0000
+    invoke CreateSolidBrush, 0x00000000
     mov [hBrush], eax
     invoke CreatePen, PS_SOLID, 3,0x00FFFFFF
     mov [hPen], eax
     invoke SelectObject, [hDC], [hPen]
     invoke SelectObject, [hDC], [hBrush]
+    
+    invoke CreatePen, PS_SOLID, 3,0x00808080
+    mov [tmppen], eax
+
+
+    stdcall MyDrawText, 0x00000000,0x00FF0000,60,Name_x, Name_y,Name_x+Name_width,Name_y+Name_height,Game_name,DT_SINGLELINE+DT_CENTER+DT_VCENTER
+
+    stdcall MyDrawText, 0x00000000,0x00FFFFFF,40,Difficulty_x, Difficulty_y,Difficulty_x+Difficulty_width,Difficulty_y+Difficulty_height,SelectDifficulty,DT_SINGLELINE+DT_CENTER+DT_VCENTER
+
+
+    invoke Rectangle, [hDC], Play_x,Play_y,Play_x+Play_width,Play_y+Play_height
+
+    .if word[Setting_name_index] = 0
+        invoke SelectObject, [hDC], [tmppen]
+    .endif
+        
     invoke Rectangle, [hDC], Squares_x ,Squares_y,Squares_x+Squares_width,Squares_y+Squares_height
-
-    invoke Rectangle, [hDC], Squares_x+TextDifficulty_width+Squares_width ,Squares_y,Squares_x+TextDifficulty_width+Squares_width*2,Squares_y+Squares_height
-
 
     invoke MoveToEx, [hDC], Squares_x+Squares_width / 2 + 5, Squares_y+Squares_height / 2 - 15, NULL  ; Устанавливаем начальную точку
     invoke LineTo, [hDC],  Squares_x+Squares_width / 2 - 5, Squares_y+Squares_height / 2  
     invoke MoveToEx, [hDC], Squares_x+Squares_width / 2 - 5, Squares_y+Squares_height / 2, NULL  ; Устанавливаем начальную точку
     invoke LineTo, [hDC],  Squares_x+Squares_width / 2 + 5, Squares_y+Squares_height / 2 + 15
+    
+    .if word[Setting_name_index] = 4
+        invoke SelectObject, [hDC], [tmppen]
+    .else
+        invoke SelectObject, [hDC], [hPen]
+    .endif
+    
+    invoke Rectangle, [hDC], Squares_x+TextDifficulty_width+Squares_width ,Squares_y,Squares_x+TextDifficulty_width+Squares_width*2,Squares_y+Squares_height
 
     invoke MoveToEx, [hDC], Squares_x+TextDifficulty_width+ 3 * Squares_width / 2 - 5, Squares_y+Squares_height / 2 - 15, NULL  ; Устанавливаем начальную точку
     invoke LineTo, [hDC],  Squares_x+TextDifficulty_width+ 3 * Squares_width / 2 + 5, Squares_y+Squares_height / 2  
     invoke MoveToEx, [hDC], Squares_x+TextDifficulty_width+ 3 * Squares_width / 2 + 5, Squares_y+Squares_height / 2, NULL  ; Устанавливаем начальную точку
     invoke LineTo, [hDC],  Squares_x+TextDifficulty_width+ 3 * Squares_width / 2 - 5, Squares_y+Squares_height / 2 + 15
+
     invoke  DeleteObject, [hBrush]
     invoke  DeleteObject, [hPen]
+    invoke  DeleteObject, [tmppen]
+
+    mov esi, Settings_name
+    mov edx,0
+    stdcall strclean, buffer
+    .startloop:
+        stdcall strlen,esi
+        mov ecx,eax
+        inc ecx
+        .if dx <> word[Setting_name_index]
+            inc edx
+            add esi,ecx
+            jmp .startloop
+        .else
+            mov edi, buffer
+            rep movsb
+            jmp .endloop
+        .endif
+    .endloop:
+
+    stdcall MyDrawText, 0x00000000,0x00FFFFFF,40,Squares_x+Squares_width, Squares_y,Squares_x+Squares_width+TextDifficulty_width,Squares_y+Squares_height,buffer,DT_SINGLELINE+DT_CENTER+DT_VCENTER
+ 
+    stdcall MyDrawText, 0x00000000,0x00FFFFFF,40,Play_x,Play_y,Play_x+Play_width,Play_y+Play_height,Play,DT_SINGLELINE+DT_CENTER+DT_VCENTER
+    
+ret
+endp
+
+proc MenuClick uses ebx edx ecx esi edi
+    mov edi, dword[mouseX]
+    mov esi, dword[mouseY]
+
+    stdcall IsInSquare, Squares_x ,Squares_y,Squares_x+Squares_width,Squares_y+Squares_height
+    .if eax = 1
+        .if word[Setting_name_index] <> 0
+            dec word[Setting_name_index]
+            
+        .endif
+        jmp .return
+    .endif
+
+    stdcall IsInSquare,  Squares_x+TextDifficulty_width+Squares_width ,Squares_y,Squares_x+TextDifficulty_width+Squares_width*2,Squares_y+Squares_height
+    .if eax = 1
+        .if word[Setting_name_index]  <> 4
+            inc word[Setting_name_index]
+        .endif
+        jmp .return
+    .endif
+
+    stdcall IsInSquare,  Play_x,Play_y,Play_x+Play_width,Play_y+Play_height
+    .if eax = 1
+        mov dword[DRAWFLAG],2
+        invoke GetTickCount
+        mov dword[timer],eax
+        stdcall SetSettings
+        stdcall initialisation,[myheap]
+        jmp .return
+    .endif
+    
+    .return:
+    stdcall DrawBackColor
+ret
+endp
+
+
+proc SetSettings uses ebx ecx edx esi edi
+    mov esi, SETTINGS
+    movzx edi, word[Setting_name_index]
+    add esi, edi
+    add esi, edi
+    movzx eax, word[esi]
+    mov word[CPU_count],ax
+    add esi, 10
+    movzx eax, word[esi]
+    mov word[Process_count],ax
+    add esi, 10
+    movzx eax, word[esi]
+    mov word[RAM_lines_count],ax
 ret
 endp
 proc WindowProc uses ebx, hWnd, uMsg, wParam, lParam
@@ -244,7 +339,7 @@ proc WindowProc uses ebx, hWnd, uMsg, wParam, lParam
                     case    3,     .PauseClick
 
                     .MenuClick:
-                        ;stdcall DrawMainMenu
+                        stdcall MenuClick
                     jmp .end2
                     
                     .MainClick:

@@ -1,0 +1,3 @@
+CPU_COUNT: '4' '6' '8' '10'
+PROCESS_STARTUP_COUNT: '12' '16' '20' '24'
+RAM_LINES_COUNT: '2' '4' '6' '8'
