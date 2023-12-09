@@ -1,4 +1,7 @@
 
+; TODO
+;   Change image load
+;   Change font
 ; Settings
   Width = 1400
   Height = 800
@@ -13,8 +16,7 @@ entry start
 
 macro switch value 
         { 
-                xor eax, eax 
-                mov eax, value 
+            mov eax, value 
         } 
   
 macro case value, label  
@@ -24,200 +26,7 @@ macro case value, label
         }
 include 'win32a.inc'
 
-section '.data' data readable writeable
-    _class TCHAR 'FASMWIN32', 0
-    _title TCHAR 'GDI32 Test', 0
-    _error TCHAR 'Startup failed.', 0
 
-    wc WNDCLASS 0, WindowProc, 0, 0, NULL, NULL, NULL, COLOR_BTNFACE + 1, NULL, _class
-
-    msg MSG
-    hDC dd 0
-    hwnd dd 0
-    hBrush dd ?
-    hPen dd ?
-    hFont dd ?
-    hImage dd ?
-    hImageDC dd ?
-    mouseX dd ?
-    mouseY dd ?
-    rect RECT
-    
-    bmi BITMAPINFOHEADER
-
-    ; Define the variables for heap memory allocation
-    heapMemory dd 0
-    heapSize dd Width * Height * 4 ; 4 bytes per pixel (32-bit)
-
-
-    CPU_count dw 6  ; variable for cpu count 
-    RAMPages_count dw ? ; variable for rampages count
-    RAM_lines_count dw 3
-    DISKPages_count dw ? ; variable for diskpages count
-    DISK_lines_count dw raw_count
-    Process_count dw 10 ; variable for start process count 
-    Process_size dd ? ; variable for the size off the process array
-    Real_process_size dd ?
-    Random_probability dw 1
-    Random_IOdelimiter dw 1000
-    Random_RAMdelimiter dw 4
-    NeedIOCount dd 0
-
-    processes dd ? ; address of the process array
-
-    ; variables for process array offset  
-    proc_name_offset = 2
-    cells_count_offset = 4  ; ram sells count
-    hung_stage_offset = 6   ; current hung stage
-    downtime_offset = 8     ; miliseconds from downtime start
-    finaltime_offset = 10   ; miliseconds from finaltime start
-    need_IO_offset = 12     ; number from 1 to 100 if < Random_probability IO 
-    downtime_tick_offset = 14   ; miliseconds from start system (from func gettickcount)
-    was_on_CPU_offset = 18  ; flag was process on cpu (to add new cells on ram or not)
-    process_offset = 20     ; final offset (size of cpu structure)
-    ;
-
-
-    tmp_offset = 2 ;;;;;;;;;;;;;
-
-
-    CPU dd ?
-    CPU_size dd ?
-    cpu_proc_name_offset = 2    ; proc_name
-    cpu_cells_count_offset = 4  ; ram sells count
-    cpu_hung_stage_offset = 6   ; current hung stage
-    cpu_uptime_offset = 8      ; miliseconds from uptime start
-    cpu_downtime_offset = 10
-    cpu_finaltime_offset = 12   ; miliseconds from finaltime start
-    cpu_need_IO_offset = 14     ; number from 1 to 100 if < Random_probability IO 
-    cpu_uptime_tick_offset = 16     ; miliseconds from start system (from func gettickcount)   
-    cpu_downtime_tick_offset = 20
-    cpu_executed_offset = 24    ; flag is process executed
-    CPU_offset = 26
-
-    RAM dd ?
-    RAM_size dd ?
-    process_on_RAM_offset = 2
-    RAM_offset = 4
-
-    DISK dd ?
-    DISK_size dd ?
-    process_on_DISK_offset = 2
-    DISK_offset = 4
-
-    current_name dw 0 ; curent name of process index
-    Reset_count dd 0 ; current count for reset
-    GAMEOVER=10 ; count for reset
-    timer dd 0 ; current tick count
-    time dd 0 
-    newprocesstime dd 0
-    seconds dd 0
-    minutes dd 0
-    hours dd 0
-    score dd 0
-    myheap dd 0 ; heap from getprocessheap
-    
-    
-    TIME_FOR_NEW_PROCESS=10000
-    TIME_FOR_NEXT_STAGE=6000
-    TIME_FOR_BEREADY=12000
-    TIME_FOR_REFRESH=4000
-
-    ;FROOOOOOOOOOOOOOOOOOOOONT
-
-    Colorarray dd 0x00fff046,0x0000ff00,0x0000FFFF,0x00008aFF,0x000808FF,0x000000A6,0x00250a41
-    Smilesarray dd 0,0,0,0,0,0,0,0
-    Hourglassesarray dd 0,0,0,0,0,0,0
-    margin_top = 20
-    margin_left = 30
-    margin_right = 30
-    margin_bottom = 10
-
-    text_margin_top = 10
-    text_margin_left = 30
-    text_margin_right = 4
-    text_margin_bottom = 45
-
-    textpage_margin_top = 5
-    textpage_margin_left = 2
-    textpage_margin_right = 0
-    textpage_margin_bottom = 15
-
-    header_height = 40
-    header_width = 1700
-    left_header_width = 700
-    right_header_width = 1000
-
-    square_size = 75
-
-    cpu_cpu_gap = 5
-    header_cpu_gap = 15
-    cpu_middle_gap = 15
-    middle_process_gap = 15
-    
-    proc_foottername_gap = 30
-    foottername_footterproc_gap = 5
-    dead_dead_gap = 5
-    page_page_gap = 5
-    ram_disk_gap = 30
-    disk_page_gap = 15
-    
-
-    page_width = 40
-    page_height = 30
-
-    proc_in_raw_count = 7
-    pages_in_raw_count = 12
-    raw_count = 10
-
-
-    procsquareY1 = margin_top+header_height+header_cpu_gap+square_size+cpu_middle_gap+header_height+middle_process_gap
-    procsquareY2 = margin_top+header_height+header_cpu_gap+square_size+cpu_middle_gap+header_height+middle_process_gap+square_size*5+cpu_cpu_gap*4
-
-    cpusquareY1 = margin_top+header_height+header_cpu_gap
-    cpusquareY2 = margin_top+header_height+header_cpu_gap + square_size
-
-    ramsquareY1 = margin_top+header_height+header_cpu_gap+square_size+cpu_middle_gap+header_height+middle_process_gap
-
-    buffer db 16 dup (?)
-    Arial db 'Arial', 0
-
-    result_buffer db 256 dup (?) 
-    PID db 'PID',0
-    IOEVENTS db 'I/O EVENTS (',0
-    IOEVENTSEND db ')',0
-    UPTIME db 'Uptime',0
-    SCORE db 'Score',0
-    CPUNAME db 'CPU',0
-    IDLE db 'Idle Processes :',0
-    MEMPAGES db 'Memory Pages in RAM :',0
-    DISKPAGES db 'Memory Pages on Disk :',0
-    PAGEQIUTS db 'User Ragequits (',0
-    SLASH db ' / 10) :',0
-    COLOMN db ':',0
-    space db ' ',0
-    ZERO db '0',0
-
-    PAGEQIUTS_X1 dd margin_left
-    PAGEQIUTS_Y1 dd margin_top+header_height+header_cpu_gap+square_size+cpu_middle_gap+header_height+middle_process_gap+square_size*5+cpu_cpu_gap*4+proc_foottername_gap+header_height+foottername_footterproc_gap
-    PAGEQIUTS_X2 dd margin_left+square_size
-    PAGEQIUTS_Y2 dd margin_top+header_height+header_cpu_gap+square_size+cpu_middle_gap+header_height+middle_process_gap+square_size*5+cpu_cpu_gap*4+proc_foottername_gap+header_height+foottername_footterproc_gap+square_size
-
-    DISKY1 dd margin_top+header_height+header_cpu_gap+square_size+cpu_middle_gap+header_height+middle_process_gap
-    
-    ;Gemoji db 'D:\BSUIR\ASSembly\course_2\images\cold_face_emoji.bmp', 0
-    emoji0 db './images/smiling_face_with_halo_emoji.bmp', 0
-    emoji1 db './images/grinning_face_emoji.bmp', 0
-    emoji2 db './images/slightly_smiling_face_emoji.bmp', 0
-    emoji3 db './images/neutral_face_emoji.bmp', 0
-    emoji4 db './images/frowning_face_emoji.bmp', 0
-    emoji5 db './images/loudly_crying_face_emoji.bmp', 0
-    emoji6 db './images/cold_face_emoji.bmp', 0
-    emoji7 db './images/skull_emoji.bmp', 0
-
-    emoji8 db './images/hourglasses/0.bmp', 0
-    hg db './images/hourglasses/', 0
-    bmp db '.bmp',0
 
 section '.text' code readable executable
   
@@ -235,7 +44,13 @@ proc start
     test eax, eax
     jz error
 
-    invoke CreateWindowEx, 0, _class, _title, WS_VISIBLE + WS_DLGFRAME + WS_SYSMENU, 0, 0, Width, Height, NULL, NULL, [wc.hInstance], NULL
+    invoke GetSystemMetrics, SM_CXSCREEN
+    mov dword[screen_width],eax
+
+    invoke GetSystemMetrics, SM_CYSCREEN
+    mov dword[screen_height],eax
+
+    invoke CreateWindowEx, 0, _class, _title, WS_VISIBLE  + WS_POPUP, 0, 0, dword[screen_width], dword[screen_height], NULL, NULL, [wc.hInstance], NULL
     mov [hwnd], eax
     invoke GetDC, [hwnd]
     mov [hDC], eax
@@ -252,49 +67,16 @@ proc start
     invoke CreateSolidBrush, 0x00000000 
     mov [hBrush], eax
     invoke  SelectObject, [hDC],eax 
-    invoke Rectangle, [hDC], 0,0,Width,Height 
+    invoke Rectangle, [hDC], 0,0,dword[screen_width],dword[screen_height] 
     invoke  DeleteObject, [hBrush]
-
 
     stdcall initialisation,[myheap]
 
     invoke GetTickCount
     mov dword[timer],eax
 
-    ;stdcall CPUpush,0
-
-    ;stdcall CPUpush,2
-
-    ;stdcall CPUpush,1
-    ;stdcall CPUpush,3
-
-    ;stdcall CPUpush,9
-    ;stdcall CPUpop,0
-    ;stdcall CPUpush,4
-    ;stdcall CPUpush,0
-    ;stdcall CPUpush,5
-    ;stdcall CPUpop,5
-    ;stdcall CPUpush,6
-    ;stdcall CPUpop,5
-    ;stdcall CPUpush,7
-    ;stdcall CPUpop,5
-    ;stdcall CPUpush,8
-    ;stdcall CPUpop,5
-    ;stdcall CPUpush,9
-    ;stdcall CPUpop,5
-    ;stdcall CPUpush,4
-    ;  main loop
-
-    
 
 
-
-    ; timer start
-
-    
-    ;
-
-    
 
     msg_loop:
         invoke GetMessage, msg, NULL, 0, 0
@@ -306,7 +88,6 @@ proc start
         invoke DispatchMessage, msg
         ;invoke SetDIBitsToDevice, [hDC], 0, 0, Width, Height, 0, 0, 0, Height, [heapMemory], bmi, 0
         jmp msg_loop
-
 
     invoke  ReleaseDC, [hwnd], [hDC]
     invoke  ShowWindow, [hwnd], SW_SHOWNORMAL
@@ -360,6 +141,47 @@ proc MainProc uses esi edi ebx edx ecx eax
         popa
 ret
 endp
+
+
+proc DrawMainMenu 
+     invoke CreatePen, PS_SOLID, 2,0x00000000
+    mov [hPen], eax
+    invoke CreateSolidBrush, 0x00000000 
+    mov [hBrush], eax
+    invoke SelectObject, [hDC], [hPen]
+    invoke SelectObject, [hDC], [hBrush]
+    invoke Rectangle, [hDC], 0,0,dword[screen_width],dword[screen_height] 
+    invoke  DeleteObject, [hBrush]
+    invoke  DeleteObject, [hPen]
+
+    stdcall MyDrawText, 0x00000000,0x00FF0000,60,Name_x, Name_y,Name_x+Name_width,Name_y+Name_height,Game_name,DT_SINGLELINE+DT_CENTER+DT_VCENTER
+
+    stdcall MyDrawText, 0x00000000,0x00FFFFFF,40,Difficulty_x, Difficulty_y,Difficulty_x+Difficulty_width,Difficulty_y+Difficulty_height,SelectDifficulty,DT_SINGLELINE+DT_CENTER+DT_VCENTER
+
+    invoke CreateSolidBrush, 0x00FF0000
+    mov [hBrush], eax
+    invoke CreatePen, PS_SOLID, 3,0x00FFFFFF
+    mov [hPen], eax
+    invoke SelectObject, [hDC], [hPen]
+    invoke SelectObject, [hDC], [hBrush]
+    invoke Rectangle, [hDC], Squares_x ,Squares_y,Squares_x+Squares_width,Squares_y+Squares_height
+
+    invoke Rectangle, [hDC], Squares_x+TextDifficulty_width+Squares_width ,Squares_y,Squares_x+TextDifficulty_width+Squares_width*2,Squares_y+Squares_height
+
+
+    invoke MoveToEx, [hDC], Squares_x+Squares_width / 2 + 5, Squares_y+Squares_height / 2 - 15, NULL  ; Устанавливаем начальную точку
+    invoke LineTo, [hDC],  Squares_x+Squares_width / 2 - 5, Squares_y+Squares_height / 2  
+    invoke MoveToEx, [hDC], Squares_x+Squares_width / 2 - 5, Squares_y+Squares_height / 2, NULL  ; Устанавливаем начальную точку
+    invoke LineTo, [hDC],  Squares_x+Squares_width / 2 + 5, Squares_y+Squares_height / 2 + 15
+
+    invoke MoveToEx, [hDC], Squares_x+TextDifficulty_width+ 3 * Squares_width / 2 - 5, Squares_y+Squares_height / 2 - 15, NULL  ; Устанавливаем начальную точку
+    invoke LineTo, [hDC],  Squares_x+TextDifficulty_width+ 3 * Squares_width / 2 + 5, Squares_y+Squares_height / 2  
+    invoke MoveToEx, [hDC], Squares_x+TextDifficulty_width+ 3 * Squares_width / 2 + 5, Squares_y+Squares_height / 2, NULL  ; Устанавливаем начальную точку
+    invoke LineTo, [hDC],  Squares_x+TextDifficulty_width+ 3 * Squares_width / 2 - 5, Squares_y+Squares_height / 2 + 15
+    invoke  DeleteObject, [hBrush]
+    invoke  DeleteObject, [hPen]
+ret
+endp
 proc WindowProc uses ebx, hWnd, uMsg, wParam, lParam
    xor     ebx, ebx
 
@@ -382,7 +204,25 @@ proc WindowProc uses ebx, hWnd, uMsg, wParam, lParam
                 .onPaint0:
                         ; вызываешь ф-цию (больше для удобства), которая у тебя рисует 
                         ; что рисует (в моём случае это каждый кадр)
+                    switch  [DRAWFLAG]
+                    case    1,     .MenuPaint
+                    case    2,     .MainPaint
+                    case    3,     .PausePaint
+
+                    .MenuPaint:
+                        stdcall DrawMainMenu
+                    jmp .end1
+                    
+                    .MainPaint:
                         stdcall MainProc
+                    jmp .end1
+                    
+                    .PausePaint:
+
+                    jmp .end1
+                        
+
+                    .end1:
                 jmp     .ReturnZero
 
                 .onKeyDown0:
@@ -397,8 +237,25 @@ proc WindowProc uses ebx, hWnd, uMsg, wParam, lParam
                     mov dword[mouseX], ebx
                     sar eax, 16 
                     mov dword[mouseY], eax
-                    stdcall FindClick
 
+                    switch  [DRAWFLAG]
+                    case    1,     .MenuClick
+                    case    2,     .MainClick
+                    case    3,     .PauseClick
+
+                    .MenuClick:
+                        ;stdcall DrawMainMenu
+                    jmp .end2
+                    
+                    .MainClick:
+                        stdcall FindClick
+                    jmp .end2
+                    
+                    .PauseClick:
+
+                    jmp .end2
+
+                    .end2:
                 jmp     .ReturnZero
 
         ; ВАЖНО!!!!! эта штука завершает выполнение проги нормально
@@ -637,3 +494,5 @@ section '.idata' import data readable writeable
   include 'Time.ASM'
   include 'PushPop.ASM'
   include 'Click.ASM'
+  include 'MainVariables.ASM'
+  include 'MenuVariables.ASM'
