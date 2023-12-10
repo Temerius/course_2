@@ -344,7 +344,14 @@ proc DrawOnePage uses edi esi ecx ebx edx,procname: dword, x1 : dword, y1: dword
     local texty2 dd ?
     local currentcolor dd ?
     stdcall findincpu, dword[procname]
-    .if eax = -1     
+    .if eax = -1   
+        stdcall findinproc, dword[procname]
+        .if eax = -1
+            mov word[esi+edi+tmp_offset], -1
+            jmp .return
+            ;xor eax,eax
+            ;div eax
+        .endif  
         mov dword[currentcolor],0x00808080    
     .else
         mov dword[currentcolor],0x00FFFFFF 
@@ -381,6 +388,7 @@ proc DrawOnePage uses edi esi ecx ebx edx,procname: dword, x1 : dword, y1: dword
     stdcall concatinate, result_buffer,buffer,result_buffer,0
     stdcall MyDrawText, dword[currentcolor],0x00000000,13,[textx1],[texty1],[textx2],[texty2],result_buffer,DT_LEFT+DT_SINGLELINE+DT_VCENTER
     stdcall strclean, result_buffer
+    .return:
 ret
 endp
 
@@ -397,6 +405,26 @@ proc findincpu uses ebx edx ecx esi edi, name: dword
         .endif
     .if edi < dword[CPU_size]
         .if word[esi+edi+cpu_proc_name_offset] = cx
+            mov eax,1
+        .endif
+    .endif
+
+ret
+endp
+
+proc findinproc uses ebx edx ecx esi edi, name: dword
+    mov esi, dword[processes]
+    mov edi,0
+    mov eax,-1
+    mov ecx, dword[name]
+    .loopstart:
+        .if word[esi+edi+proc_name_offset] <> cx
+            add edi,process_offset
+            cmp edi, dword [Process_size]
+            jb .loopstart
+        .endif
+    .if edi < dword[Process_size]
+        .if word[esi+edi+proc_name_offset] = cx
             mov eax,1
         .endif
     .endif

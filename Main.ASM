@@ -406,7 +406,7 @@ ret
 endp
 proc deleteprocess uses esi edi ebx edx ecx
     mov esi, dword[processes]
-    movzx eax,word [esi+edi+proc_name_offset]
+    movzx eax, word [esi+edi+proc_name_offset]
     stdcall deletecells, eax
     .if word[esi+edi+need_IO_offset] = 1
         dec dword[NeedIOCount]
@@ -424,7 +424,6 @@ proc deletecpu uses esi edi ebx edx ecx
         dec dword[NeedIOCount]
     .endif
     mov word [esi+edi+cpu_proc_name_offset],-1
-
 ret
 endp
     ; comparator 1- newprocess 2 - from cpu
