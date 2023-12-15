@@ -132,3 +132,34 @@ ret
 endp
 
 
+proc UpdateAllTime uses ebx ecx edx esi edi 
+    invoke GetTickCount
+    mov dword[timer], eax
+    mov esi, dword[processes]
+    mov edi,0
+
+    .startloop1:
+        .if dword[esi+edi+downtime_tick_offset] <> 0
+            mov dword[esi+edi+downtime_tick_offset], eax
+        .endif
+        add edi,process_offset
+        cmp edi, dword[Process_size]
+        jb .startloop1
+
+    mov esi, dword[CPU]
+    mov edi,0
+
+    .startloop2:
+        .if dword[esi+edi+cpu_downtime_tick_offset] <> 0
+            mov dword[esi+edi+cpu_downtime_tick_offset], eax
+        .endif
+        .if dword[esi+edi+cpu_uptime_tick_offset] <> 0
+            mov dword[esi+edi+cpu_uptime_tick_offset], eax
+        .endif
+        add edi,CPU_offset
+        cmp edi, dword[CPU_size]
+        jb .startloop2
+ret
+endp
+
+

@@ -530,3 +530,19 @@ proc DrawImage, image: dword, x: dword, y: dword, xsize: dword, ysize: dword
     ret
 endp
 
+
+proc FulRect uses ecx ebx esi edi edx, backcolor: dword, pencolor: dword, x1: dword, y1: dword, x2: dword, y2: dword
+    invoke CreateSolidBrush, [backcolor]
+    mov [hBrush], eax
+    invoke CreatePen, PS_SOLID, 2,[pencolor]
+    mov [hPen], eax
+    invoke SelectObject, [hDCBuf], [hPen]
+    invoke SelectObject, [hDCBuf], [hBrush]
+
+    invoke Rectangle, [hDCBuf],[x1],[y1],[x2],[y2]
+
+    invoke  DeleteObject, [hBrush]
+    invoke  DeleteObject, [hPen]
+ret
+endp
+

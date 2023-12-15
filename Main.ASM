@@ -3,6 +3,8 @@
 ;   Change image load
 ;   Change font
 ; Settings
+; dead process 700
+; morganie
   Width = 1400
   Height = 800
   R = 0
@@ -57,9 +59,6 @@ proc start
   invoke CreateCompatibleBitmap, [hDCMain], [screen_width], [screen_height] 
   invoke SelectObject, [hDCBuf], eax
 
-    mov dword [myheap],0
-    invoke GetProcessHeap
-    mov dword[myheap], eax
 
     ; image
     invoke CreateCompatibleDC, [hDCBuf]
@@ -149,265 +148,137 @@ ret
 endp
 
 
-proc DrawMainMenu uses edi esi ecx edx ebx
 
-    local tmppen dd ?
-
-    invoke CreateSolidBrush, 0x00000000
-    mov [hBrush], eax
-    invoke CreatePen, PS_SOLID, 3,0x00FFFFFF
-    mov [hPen], eax
-    invoke SelectObject, [hDCBuf], [hPen]
-    invoke SelectObject, [hDCBuf], [hBrush]
-    
-    invoke CreatePen, PS_SOLID, 3,0x00808080
-    mov [tmppen], eax
-
-
-    stdcall MyDrawText, 0x00000000,0x00FF0000,60,Name_x, Name_y,Name_x+Name_width,Name_y+Name_height,Game_name,DT_SINGLELINE+DT_CENTER+DT_VCENTER
-
-    stdcall MyDrawText, 0x00000000,0x00FFFFFF,40,Difficulty_x, Difficulty_y,Difficulty_x+Difficulty_width,Difficulty_y+Difficulty_height,SelectDifficulty,DT_SINGLELINE+DT_CENTER+DT_VCENTER
-
-
-    invoke Rectangle, [hDCBuf], Play_x,Play_y,Play_x+Play_width,Play_y+Play_height
-
-    .if word[Setting_name_index] = 0
-        invoke SelectObject, [hDCBuf], [tmppen]
-    .endif
-        
-    invoke Rectangle, [hDCBuf], Squares_x ,Squares_y,Squares_x+Squares_width,Squares_y+Squares_height
-
-    invoke MoveToEx, [hDCBuf], Squares_x+Squares_width / 2 + 5, Squares_y+Squares_height / 2 - 15, NULL  ; Устанавливаем начальную точку
-    invoke LineTo, [hDCBuf],  Squares_x+Squares_width / 2 - 5, Squares_y+Squares_height / 2  
-    invoke MoveToEx, [hDCBuf], Squares_x+Squares_width / 2 - 5, Squares_y+Squares_height / 2, NULL  ; Устанавливаем начальную точку
-    invoke LineTo, [hDCBuf],  Squares_x+Squares_width / 2 + 5, Squares_y+Squares_height / 2 + 15
-    
-    .if word[Setting_name_index] = 4
-        invoke SelectObject, [hDCBuf], [tmppen]
-    .else
-        invoke SelectObject, [hDCBuf], [hPen]
-    .endif
-    
-    invoke Rectangle, [hDCBuf], Squares_x+TextDifficulty_width+Squares_width ,Squares_y,Squares_x+TextDifficulty_width+Squares_width*2,Squares_y+Squares_height
-
-    invoke MoveToEx, [hDCBuf], Squares_x+TextDifficulty_width+ 3 * Squares_width / 2 - 5, Squares_y+Squares_height / 2 - 15, NULL  ; Устанавливаем начальную точку
-    invoke LineTo, [hDCBuf],  Squares_x+TextDifficulty_width+ 3 * Squares_width / 2 + 5, Squares_y+Squares_height / 2  
-    invoke MoveToEx, [hDCBuf], Squares_x+TextDifficulty_width+ 3 * Squares_width / 2 + 5, Squares_y+Squares_height / 2, NULL  ; Устанавливаем начальную точку
-    invoke LineTo, [hDCBuf],  Squares_x+TextDifficulty_width+ 3 * Squares_width / 2 - 5, Squares_y+Squares_height / 2 + 15
-
-    invoke  DeleteObject, [hBrush]
-    invoke  DeleteObject, [hPen]
-    invoke  DeleteObject, [tmppen]
-
-    mov esi, Settings_name
-    mov edx,0
-    stdcall strclean, buffer
-    .startloop:
-        stdcall strlen,esi
-        mov ecx,eax
-        inc ecx
-        .if dx <> word[Setting_name_index]
-            inc edx
-            add esi,ecx
-            jmp .startloop
-        .else
-            mov edi, buffer
-            rep movsb
-            jmp .endloop
-        .endif
-    .endloop:
-
-    stdcall MyDrawText, 0x00000000,0x00FFFFFF,40,Squares_x+Squares_width, Squares_y,Squares_x+Squares_width+TextDifficulty_width,Squares_y+Squares_height,buffer,DT_SINGLELINE+DT_CENTER+DT_VCENTER
- 
-    stdcall MyDrawText, 0x00000000,0x00FFFFFF,40,Play_x,Play_y,Play_x+Play_width,Play_y+Play_height,Play,DT_SINGLELINE+DT_CENTER+DT_VCENTER
-    
-ret
-endp
-
-proc MenuClick uses ebx edx ecx esi edi
-    mov edi, dword[mouseX]
-    mov esi, dword[mouseY]
-
-    stdcall IsInSquare, Squares_x ,Squares_y,Squares_x+Squares_width,Squares_y+Squares_height
-    .if eax = 1
-        .if word[Setting_name_index] <> 0
-            dec word[Setting_name_index]
-            
-        .endif
-        jmp .return
-    .endif
-
-    stdcall IsInSquare,  Squares_x+TextDifficulty_width+Squares_width ,Squares_y,Squares_x+TextDifficulty_width+Squares_width*2,Squares_y+Squares_height
-    .if eax = 1
-        .if word[Setting_name_index]  <> 4
-            inc word[Setting_name_index]
-        .endif
-        jmp .return
-    .endif
-
-    stdcall IsInSquare,  Play_x,Play_y,Play_x+Play_width,Play_y+Play_height
-    .if eax = 1
-        mov dword[DRAWFLAG],2
-        invoke GetTickCount
-        mov dword[timer],eax
-        stdcall SetSettings
-        stdcall initialisation,[myheap]
-        jmp .return
-    .endif
-    
-    .return:
-    stdcall DrawBackColor
-ret
-endp
-
-proc UpdateAllTime uses ebx ecx edx esi edi 
-    invoke GetTickCount
-    mov dword[timer], eax
-    mov esi, dword[processes]
-    mov edi,0
-
-    .startloop1:
-        .if dword[esi+edi+downtime_tick_offset] <> 0
-            mov dword[esi+edi+downtime_tick_offset], eax
-        .endif
-        add edi,process_offset
-        cmp edi, dword[Process_size]
-        jb .startloop1
-
-    mov esi, dword[CPU]
-    mov edi,0
-
-    .startloop2:
-        .if dword[esi+edi+cpu_downtime_tick_offset] <> 0
-            mov dword[esi+edi+cpu_downtime_tick_offset], eax
-        .endif
-        .if dword[esi+edi+cpu_uptime_tick_offset] <> 0
-            mov dword[esi+edi+cpu_uptime_tick_offset], eax
-        .endif
-        add edi,CPU_offset
-        cmp edi, dword[CPU_size]
-        jb .startloop2
-ret
-endp
-
-proc SetSettings uses ebx ecx edx esi edi
-    mov esi, SETTINGS
-    movzx edi, word[Setting_name_index]
-    add esi, edi
-    add esi, edi
-    movzx eax, word[esi]
-    mov word[CPU_count],ax
-    add esi, 10
-    movzx eax, word[esi]
-    mov word[Process_count],ax
-    add esi, 10
-    movzx eax, word[esi]
-    mov word[RAM_lines_count],ax
+proc SetDefault uses ebx ecx edx esi edi
+    invoke HeapFree, [myheap], 0, [heapMemory]
+    mov word[current_name],0
+    mov dword[Reset_count],0
+    mov dword[seconds],0
+    mov dword[minutes],0
+    mov dword[hours],0
+    mov dword[score],0
+    mov dword[PAGEQIUTS_X1], margin_left
+    mov dword[PAGEQIUTS_Y1], margin_top+header_height+header_cpu_gap+square_size+cpu_middle_gap+header_height+middle_process_gap+square_size*5+cpu_cpu_gap*4+proc_foottername_gap+header_height+foottername_footterproc_gap
+    mov dword[PAGEQIUTS_X2], margin_left+square_size
+    mov dword[PAGEQIUTS_Y2], margin_top+header_height+header_cpu_gap+square_size+cpu_middle_gap+header_height+middle_process_gap+square_size*5+cpu_cpu_gap*4+proc_foottername_gap+header_height+foottername_footterproc_gap+square_size
+    mov dword[DISKY1], margin_top+header_height+header_cpu_gap+square_size+cpu_middle_gap+header_height+middle_process_gap
 ret
 endp
 proc WindowProc uses ebx, hWnd, uMsg, wParam, lParam
-   xor     ebx, ebx
+   xor ebx, ebx
 
-                switch  [uMsg]
-                case    WM_PAINT,       .onPaint0
-                case    WM_DESTROY,     .onDestroy
-                case    WM_KEYDOWN,     .onKeyDown0
-                case    WM_LBUTTONDOWN, .onLClick0
+    switch  [uMsg]
+    case    WM_PAINT,       .onPaint0
+    case    WM_DESTROY,     .onDestroy
+    case    WM_KEYDOWN,     .onKeyDown0
+    case    WM_LBUTTONDOWN, .onLClick0
 
-                ; перечисляешь все события, которые обрабатываешь руками, здесь, в case. 
-                ; destroy и paint оставляй как у меня
+    ; перечисляешь все события, которые обрабатываешь руками, здесь, в case. 
+    ; destroy и paint оставляй как у меня
 
-                ; вот эта ерундень обрабатывает остальное, что ты руками не обработал
-                ; ВАЖНО!!! её оставить 
-                invoke  DefWindowProc, [hWnd], [uMsg], [wParam], [lParam]
+    ; вот эта ерундень обрабатывает остальное, что ты руками не обработал
+    ; ВАЖНО!!! её оставить 
+    invoke  DefWindowProc, [hWnd], [uMsg], [wParam], [lParam]
 
-                jmp     .Return
-     
-                ; после каждого РУКАМИ обработанного возвращаешь ноль (см конец)
-                .onPaint0:
-                        ; вызываешь ф-цию (больше для удобства), которая у тебя рисует 
-                        ; что рисует (в моём случае это каждый кадр)
-                    switch  [DRAWFLAG]
-                    case    1,     .MenuPaint
-                    case    2,     .MainPaint
-                    case    3,     .PausePaint
+    jmp     .Return
 
-                    .MenuPaint:
-                        stdcall DrawMainMenu
-                    jmp .end1
-                    
-                    .MainPaint:
-                        stdcall MainProc
-                    jmp .end1
-                    
-                    .PausePaint:
+    ; после каждого РУКАМИ обработанного возвращаешь ноль (см конец)
+    .onPaint0:
+            ; вызываешь ф-цию (больше для удобства), которая у тебя рисует 
+            ; что рисует (в моём случае это каждый кадр)
+        switch  [DRAWFLAG]
+        case    1,     .MenuPaint
+        case    2,     .MainPaint
+        case    3,     .PausePaint
 
-                    jmp .end1
-                        
+        .MenuPaint:
+            stdcall DrawMainMenu
+        jmp .end1
+        
+        .MainPaint:
+            stdcall MainProc
+        jmp .end1
+        
+        .PausePaint:
+            stdcall DrawPause
+        jmp .end1
+            
 
-                    .end1:
-                jmp     .ReturnZero
+        .end1:
+    jmp     .ReturnZero
 
-                .onKeyDown0:
-                        switch [wParam]
-                        case VK_ESCAPE, .onDestroy
-                        case VK_SPACE, .onSpace
-                jmp     .ReturnZero
+    .onKeyDown0:
+            switch [wParam]
+            case VK_ESCAPE, .onDestroy
+            case VK_SPACE, .onSpace
+    jmp     .ReturnZero
 
-                .onSpace:
-                    .if dword[DRAWFLAG] = 2
-                        .if dword[PAUSEFLAG] = 0
-                            mov dword[PAUSEFLAG],1
-                        .else
-                            stdcall UpdateAllTime
-                            mov dword[PAUSEFLAG],0
-                        .endif
-                    .endif
-                    jmp .end2
-                .onLClick0:
-                    mov eax, [lParam]
-                    movsx ebx, ax
-                    mov dword[mouseX], ebx
-                    sar eax, 16 
-                    mov dword[mouseY], eax
+    .onSpace:
+        .if dword[DRAWFLAG] = 2
+            .if dword[PAUSEFLAG] = 0
+                mov dword[PAUSEFLAG],1
+            .else
+                stdcall UpdateAllTime
+                mov dword[PAUSEFLAG],0
+            .endif
+        .endif
+        jmp .end2
+    .onLClick0:
+        mov eax, [lParam]
+        movsx ebx, ax
+        mov dword[mouseX], ebx
+        sar eax, 16 
+        mov dword[mouseY], eax
 
-                    switch  [DRAWFLAG]
-                    case    1,     .MenuClick
-                    case    2,     .MainClick
-                    case    3,     .PauseClick
-                    jmp .end2
+        switch  [DRAWFLAG]
+        case    1,     .MenuClick
+        case    2,     .MainClick
+        case    3,     .PauseClick
+        jmp .end2
 
-                    .MenuClick:
-                        stdcall MenuClick
-                    jmp .end2
-                    
-                    .MainClick:
-                        .if dword[PAUSEFLAG] = 0
-                            stdcall FindClick
-                        .endif
-                    jmp .end2
-                    
-                    .PauseClick:
+        .MenuClick:
+            stdcall MenuClick
+        jmp .end2
+        
+        .MainClick:
+            .if dword[PAUSEFLAG] = 0
+                stdcall FindClick
+            .endif
+        jmp .end2
+        
+        .PauseClick:
+            stdcall PauseClick
+        jmp .end2
 
-                    jmp .end2
+        .end2:
+    jmp     .ReturnZero
 
-                    .end2:
-                jmp     .ReturnZero
-
-        ; ВАЖНО!!!!! эта штука завершает выполнение проги нормально
-        ; не трожь, даже если не нравится 
-        .onDestroy:
-        invoke  ExitProcess, 0
-
-        .ReturnZero:
-        xor     eax, eax
-invoke BitBlt, [hDCMain], 0, 0, [screen_width], [screen_height], [hDCBuf], 0, 0, SRCCOPY
-        .Return:        
-        ret
+    ; ВАЖНО!!!!! эта штука завершает выполнение проги нормально
+    ; не трожь, даже если не нравится 
+    .onDestroy:
+        .if dword[DRAWFLAG] = 2
+            mov dword[PAUSEFLAG],1
+            mov dword[DRAWFLAG],3
+        .else
+            .if dword[DRAWFLAG]= 3
+                mov dword[PAUSEFLAG], 0
+                mov dword[DRAWFLAG],2
+                stdcall UpdateAllTime
+                stdcall FulRect, 0x00000000, 0x00000000,0,0, dword[screen_width], 650
+            .else
+                .if dword[DRAWFLAG]=1
+                    invoke  ExitProcess, 0
+                .endif
+            .endif
+        .endif
+    .ReturnZero:
+    xor     eax, eax
+    
+    invoke BitBlt, [hDCMain], 0, 0, [screen_width], [screen_height], [hDCBuf], 0, 0, SRCCOPY
+    
+    .Return:        
+    ret
 endp
-
-
-
 
 proc realloc
     mov eax, dword[Real_process_size]
@@ -631,3 +502,6 @@ section '.idata' import data readable writeable
   include 'Click.ASM'
   include 'MainVariables.ASM'
   include 'MenuVariables.ASM'
+  include 'Menu.ASM'
+  include 'PauseVariables.ASM'
+  include 'Pause.ASM'
