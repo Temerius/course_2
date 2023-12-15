@@ -24,9 +24,9 @@ proc DrawDiskRam, comparator: dword
             mov [hBrush], eax
             invoke CreatePen, PS_SOLID, 2, 0x00000000
             mov [hPen], eax
-            invoke SelectObject, [hDC], [hPen]
-            invoke SelectObject, [hDC], [hBrush]
-            invoke Rectangle, [hDC],[x1],[y1],[x2],[y2]
+            invoke SelectObject, [hDCBuf], [hPen]
+            invoke SelectObject, [hDCBuf], [hBrush]
+            invoke Rectangle, [hDCBuf],[x1],[y1],[x2],[y2]
             invoke  DeleteObject, [hPen]
             invoke  DeleteObject, [hBrush]
         .endif

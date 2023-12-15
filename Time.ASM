@@ -22,7 +22,7 @@ proc timeupdate
     push eax
     sub eax, dword[timer]
     add dword[newprocesstime],eax
-    cmp [newprocesstime],TIME_FOR_NEW_PROCESS
+    cmp dword[newprocesstime],TIME_FOR_NEW_PROCESS
     jb loop_prepare
         mov dword[newprocesstime],0
         ; call create new process

@@ -235,28 +235,28 @@ proc initialisation, a: DWORD
 
     mov edi, Smilesarray
     mov esi, 0
-    invoke LoadImage, [hDC], emoji0, IMAGE_BITMAP, 0, 0,LR_DEFAULTCOLOR+LR_DEFAULTSIZE+LR_LOADFROMFILE
+    invoke LoadImage, [hDCBuf], emoji0, IMAGE_BITMAP, 0, 0,LR_DEFAULTCOLOR+LR_DEFAULTSIZE+LR_LOADFROMFILE
     mov dword[edi+esi],eax
     add esi,4
-    invoke LoadImage, [hDC], emoji1, IMAGE_BITMAP, 0, 0,LR_DEFAULTCOLOR+LR_DEFAULTSIZE+LR_LOADFROMFILE
+    invoke LoadImage, [hDCBuf], emoji1, IMAGE_BITMAP, 0, 0,LR_DEFAULTCOLOR+LR_DEFAULTSIZE+LR_LOADFROMFILE
     mov dword[edi+esi],eax
     add esi,4
-    invoke LoadImage, [hDC], emoji2, IMAGE_BITMAP, 0, 0,LR_DEFAULTCOLOR+LR_DEFAULTSIZE+LR_LOADFROMFILE
+    invoke LoadImage, [hDCBuf], emoji2, IMAGE_BITMAP, 0, 0,LR_DEFAULTCOLOR+LR_DEFAULTSIZE+LR_LOADFROMFILE
     mov dword[edi+esi],eax
     add esi,4
-    invoke LoadImage, [hDC], emoji3, IMAGE_BITMAP, 0, 0,LR_DEFAULTCOLOR+LR_DEFAULTSIZE+LR_LOADFROMFILE
+    invoke LoadImage, [hDCBuf], emoji3, IMAGE_BITMAP, 0, 0,LR_DEFAULTCOLOR+LR_DEFAULTSIZE+LR_LOADFROMFILE
     mov dword[edi+esi],eax
     add esi,4
-    invoke LoadImage, [hDC], emoji4, IMAGE_BITMAP, 0, 0,LR_DEFAULTCOLOR+LR_DEFAULTSIZE+LR_LOADFROMFILE
+    invoke LoadImage, [hDCBuf], emoji4, IMAGE_BITMAP, 0, 0,LR_DEFAULTCOLOR+LR_DEFAULTSIZE+LR_LOADFROMFILE
     mov dword[edi+esi],eax
     add esi,4
-    invoke LoadImage, [hDC], emoji5, IMAGE_BITMAP, 0, 0,LR_DEFAULTCOLOR+LR_DEFAULTSIZE+LR_LOADFROMFILE
+    invoke LoadImage, [hDCBuf], emoji5, IMAGE_BITMAP, 0, 0,LR_DEFAULTCOLOR+LR_DEFAULTSIZE+LR_LOADFROMFILE
     mov dword[edi+esi],eax
     add esi,4
-    invoke LoadImage, [hDC], emoji6, IMAGE_BITMAP, 0, 0,LR_DEFAULTCOLOR+LR_DEFAULTSIZE+LR_LOADFROMFILE
+    invoke LoadImage, [hDCBuf], emoji6, IMAGE_BITMAP, 0, 0,LR_DEFAULTCOLOR+LR_DEFAULTSIZE+LR_LOADFROMFILE
     mov dword[edi+esi],eax
      add esi,4
-    invoke LoadImage, [hDC], emoji7, IMAGE_BITMAP, 0, 0,LR_DEFAULTCOLOR+LR_DEFAULTSIZE+LR_LOADFROMFILE
+    invoke LoadImage, [hDCBuf], emoji7, IMAGE_BITMAP, 0, 0,LR_DEFAULTCOLOR+LR_DEFAULTSIZE+LR_LOADFROMFILE
     mov dword[edi+esi],eax
    
     mov edi, Hourglassesarray
@@ -265,7 +265,7 @@ proc initialisation, a: DWORD
     .startloop:
         push ecx
         stdcall IntToStr, ecx,emoji8,21
-        invoke LoadImage, [hDC], emoji8, IMAGE_BITMAP, 0, 0,LR_DEFAULTCOLOR+LR_DEFAULTSIZE+LR_LOADFROMFILE
+        invoke LoadImage, [hDCBuf], emoji8, IMAGE_BITMAP, 0, 0,LR_DEFAULTCOLOR+LR_DEFAULTSIZE+LR_LOADFROMFILE
         mov dword[edi+esi],eax
         add esi,4
         pop ecx

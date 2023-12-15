@@ -3,9 +3,9 @@ proc DrawHeader
     mov [hBrush], eax
     invoke CreatePen, PS_SOLID, 2, 0x00969817
     mov [hPen], eax
-    invoke SelectObject, [hDC], [hBrush]
-    invoke SelectObject, [hDC], [hPen]
-    invoke Rectangle, [hDC],margin_left, margin_top,margin_left+square_size*2+cpu_cpu_gap,margin_top+header_height
+    invoke SelectObject, [hDCBuf], [hBrush]
+    invoke SelectObject, [hDCBuf], [hPen]
+    invoke Rectangle, [hDCBuf],margin_left, margin_top,margin_left+square_size*2+cpu_cpu_gap,margin_top+header_height
     invoke  DeleteObject, [hBrush]
     invoke  DeleteObject, [hPen]
     stdcall strclean, buffer
@@ -82,9 +82,9 @@ proc drawCPU
             mov [hPen], eax
             invoke CreateSolidBrush, 0x00000000
             mov [hBrush], eax
-            invoke SelectObject, [hDC], [hPen]
-            invoke SelectObject, [hDC], [hBrush]
-            invoke Rectangle, [hDC], [x1],[y1],[x2],[y2]
+            invoke SelectObject, [hDCBuf], [hPen]
+            invoke SelectObject, [hDCBuf], [hBrush]
+            invoke Rectangle, [hDCBuf], [x1],[y1],[x2],[y2]
             stdcall strclean, buffer
             movzx eax, word[esi+edi]
             stdcall IntToStr, eax,buffer,0
@@ -131,9 +131,9 @@ proc DrawOneProcess uses edi esi ebx edx ecx, procname: dword, x1 : dword, y1: d
     mov [hBrush], eax
     invoke CreatePen, PS_SOLID, 2, [current_color]
     mov [hPen], eax
-    invoke SelectObject, [hDC], [hPen]
-    invoke SelectObject, [hDC], [hBrush]
-    invoke Rectangle, [hDC], [x1],[y1],[x2],[y2]
+    invoke SelectObject, [hDCBuf], [hPen]
+    invoke SelectObject, [hDCBuf], [hBrush]
+    invoke Rectangle, [hDCBuf], [x1],[y1],[x2],[y2]
     invoke  DeleteObject, [hBrush]
     invoke  DeleteObject, [hPen]
     
@@ -208,7 +208,7 @@ proc DrawOneProcess uses edi esi ebx edx ecx, procname: dword, x1 : dword, y1: d
 
     ;invoke CreateSolidBrush, 0x00000000
     ;mov [hBrush], eax
-    ;invoke SelectObject, [hDC], [hBrush]
+    ;invoke SelectObject, [hDCBuf], [hBrush]
 
 
 ret
@@ -241,9 +241,9 @@ proc DrawProcesses
             mov [hBrush], eax
             invoke CreatePen, PS_SOLID, 2, 0x00000000
             mov [hPen], eax
-            invoke SelectObject, [hDC], [hPen]
-            invoke SelectObject, [hDC], [hBrush]
-            invoke Rectangle, [hDC], [x1],[y1],[x2],[y2]
+            invoke SelectObject, [hDCBuf], [hPen]
+            invoke SelectObject, [hDCBuf], [hBrush]
+            invoke Rectangle, [hDCBuf], [x1],[y1],[x2],[y2]
             invoke  DeleteObject, [hBrush]
             invoke  DeleteObject, [hPen]
          .endif
@@ -298,9 +298,9 @@ proc DrawPages, comparator : dword
             mov [hBrush], eax
             invoke CreatePen, PS_SOLID, 2, 0x00000000
             mov [hPen], eax
-            invoke SelectObject, [hDC], [hPen]
-            invoke SelectObject, [hDC], [hBrush]
-            invoke Rectangle, [hDC],[x1],[y1],[x2],[y2]
+            invoke SelectObject, [hDCBuf], [hPen]
+            invoke SelectObject, [hDCBuf], [hBrush]
+            invoke Rectangle, [hDCBuf],[x1],[y1],[x2],[y2]
             invoke  DeleteObject, [hPen]
             invoke  DeleteObject, [hBrush]
         .endif
@@ -349,8 +349,6 @@ proc DrawOnePage uses edi esi ecx ebx edx,procname: dword, x1 : dword, y1: dword
         .if eax = -1
             mov word[esi+edi+tmp_offset], -1
             jmp .return
-            ;xor eax,eax
-            ;div eax
         .endif  
         mov dword[currentcolor],0x00808080    
     .else
@@ -361,9 +359,9 @@ proc DrawOnePage uses edi esi ecx ebx edx,procname: dword, x1 : dword, y1: dword
     mov [hBrush], eax
     invoke CreatePen, PS_SOLID, 2, dword[currentcolor]
     mov [hPen], eax
-    invoke SelectObject, [hDC], [hPen]
-    invoke SelectObject, [hDC], [hBrush]
-    invoke Rectangle, [hDC],[x1],[y1],[x2],[y2]
+    invoke SelectObject, [hDCBuf], [hPen]
+    invoke SelectObject, [hDCBuf], [hBrush]
+    invoke Rectangle, [hDCBuf],[x1],[y1],[x2],[y2]
     invoke  DeleteObject, [hPen]
     invoke  DeleteObject, [hBrush]
 
@@ -457,9 +455,9 @@ proc DrawDead uses esi edi ebx ecx edx, procname: dword
     mov [hBrush], eax
     invoke CreatePen, PS_SOLID, 2, [current_color]
     mov [hPen], eax
-    invoke SelectObject, [hDC], [hPen]
-    invoke SelectObject, [hDC], [hBrush]
-    invoke Rectangle, [hDC], [PAGEQIUTS_X1],[PAGEQIUTS_Y1],[PAGEQIUTS_X2],[PAGEQIUTS_Y2]
+    invoke SelectObject, [hDCBuf], [hPen]
+    invoke SelectObject, [hDCBuf], [hBrush]
+    invoke Rectangle, [hDCBuf], [PAGEQIUTS_X1],[PAGEQIUTS_Y1],[PAGEQIUTS_X2],[PAGEQIUTS_Y2]
     invoke  DeleteObject, [hBrush]
     invoke  DeleteObject, [hPen]
     ; draw text
@@ -504,11 +502,11 @@ endp
 proc MyDrawText, bgcolor: dword,textcolor: dword,fontsize: dword,x1: dword, y1: dword, x2: dword, y2: dword, text: dword, pos: dword
 
     local rect RECT
-    invoke SetBkColor, [hDC], [bgcolor] 
-    invoke SetTextColor, [hDC], [textcolor]
+    invoke SetBkColor, [hDCBuf], [bgcolor] 
+    invoke SetTextColor, [hDCBuf], [textcolor]
     invoke CreateFont, [fontsize], 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET, OUT_TT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY, VARIABLE_PITCH+FF_ROMAN, Arial
     mov [hFont], eax 
-    invoke  SelectObject, [hDC],eax
+    invoke  SelectObject, [hDCBuf],eax
     mov eax, [x1]
     mov [rect.left], eax
     mov eax, [x2]
@@ -518,7 +516,7 @@ proc MyDrawText, bgcolor: dword,textcolor: dword,fontsize: dword,x1: dword, y1: 
     mov eax, [y2]
     mov [rect.bottom], eax
     lea ebx, [rect] 
-    invoke DrawText, [hDC], [text], -1, ebx, [pos]
+    invoke DrawText, [hDCBuf], [text], -1, ebx, [pos]
     invoke  DeleteObject, [hFont]
     ret
 endp
@@ -527,7 +525,7 @@ proc DrawImage, image: dword, x: dword, y: dword, xsize: dword, ysize: dword
 
     mov eax,[image]
     invoke SelectObject, [hImageDC], eax
-    invoke BitBlt, [hDC], [x], [y], [xsize], [ysize], [hImageDC], 0, 0, SRCCOPY
+    invoke BitBlt, [hDCBuf], [x], [y], [xsize], [ysize], [hImageDC], 0, 0, SRCCOPY
     
     ret
 endp

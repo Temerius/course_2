@@ -6,7 +6,8 @@ section '.data' data readable writeable
     wc WNDCLASS 0, WindowProc, 0, 0, NULL, NULL, NULL, COLOR_BTNFACE + 1, NULL, _class
 
     msg MSG
-    hDC dd 0
+    hDCBuf dd 0
+    hDCMain dd 0
     hwnd dd 0
     hBrush dd ?
     hPen dd ?
@@ -16,6 +17,7 @@ section '.data' data readable writeable
     mouseX dd ?
     mouseY dd ?
     DRAWFLAG dd 1
+    PAUSEFLAG dd 0
     rect RECT
     
     screen_height dd ?
