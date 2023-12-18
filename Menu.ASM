@@ -99,8 +99,6 @@ proc MenuClick uses ebx edx ecx esi edi
         mov dword[DRAWFLAG],2
         invoke GetTickCount
         mov dword[timer],eax
-        invoke GetProcessHeap
-        mov dword[myheap], eax
         stdcall SetSettings
         stdcall initialisation,[myheap]
         stdcall DrawBackColor
@@ -118,6 +116,7 @@ endp
 
 
 proc SetSettings uses ebx ecx edx esi edi
+    mov word[DISK_lines_count], raw_count
     mov esi, SETTINGS
     movzx edi, word[Setting_name_index]
     add esi, edi

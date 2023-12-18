@@ -33,8 +33,8 @@ proc PauseClick uses ebx edx ecx esi edi
         mov dword[DRAWFLAG],2
         mov dword[PAUSEFLAG],0
         stdcall SetDefault
-        invoke GetProcessHeap
-        mov dword[myheap], eax
+        ;invoke GetProcessHeap
+        ;mov dword[myheap], eax
         invoke GetTickCount
         mov dword[timer],eax
         stdcall initialisation,[myheap]
@@ -56,7 +56,7 @@ proc PauseClick uses ebx edx ecx esi edi
         mov dword[DRAWFLAG],2
         mov dword[PAUSEFLAG],0
         stdcall UpdateAllTime
-        stdcall FulRect, 0x00000000, 0x00000000,0,0, dword[screen_width], 650
+        stdcall FulRect, 0x00000000, 0x00000000,Square_x,Square1_y, Square_x+Square_width+5,Square1_y+Square_height*3+5
         jmp .return
     .endif
     

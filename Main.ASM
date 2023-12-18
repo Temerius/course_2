@@ -64,6 +64,9 @@ proc start
     invoke CreateCompatibleDC, [hDCBuf]
     mov [hImageDC], eax
 
+    invoke GetProcessHeap
+    mov dword[myheap], eax
+    
     stdcall DrawBackColor
 
     ;stdcall initialisation,[myheap]
@@ -150,7 +153,7 @@ endp
 
 
 proc SetDefault uses ebx ecx edx esi edi
-    invoke HeapFree, [myheap], 0, [heapMemory]
+    invoke HeapFree, [myheap], 0, processes
     mov word[current_name],0
     mov dword[Reset_count],0
     mov dword[seconds],0
@@ -264,7 +267,7 @@ proc WindowProc uses ebx, hWnd, uMsg, wParam, lParam
                 mov dword[PAUSEFLAG], 0
                 mov dword[DRAWFLAG],2
                 stdcall UpdateAllTime
-                stdcall FulRect, 0x00000000, 0x00000000,0,0, dword[screen_width], 650
+                stdcall FulRect, 0x00000000, 0x00000000,Square_x,Square1_y, Square_x+Square_width+5,Square1_y+Square_height*3+5
             .else
                 .if dword[DRAWFLAG]=1
                     invoke  ExitProcess, 0
