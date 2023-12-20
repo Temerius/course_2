@@ -35,7 +35,7 @@ proc PauseClick uses ebx edx ecx esi edi
         stdcall SetDefault
         invoke GetTickCount
         mov dword[timer],eax
-        mov word[DISK_lines_count], raw_count
+        
         stdcall initialisation,[myheap]
         stdcall DrawBackColor
         jmp .return

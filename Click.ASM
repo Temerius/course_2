@@ -102,6 +102,7 @@ proc FindClickInCPU uses ebx ecx edx esi edi
                 stdcall CPUpop, edx
             .else
                 movzx edx, word[esi+edi+cpu_proc_name_offset]
+                dec dword[Current_process_count]
                 stdcall deletecells , edx
                 mov word[esi+edi+cpu_proc_name_offset], -1
             .endif

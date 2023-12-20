@@ -24,9 +24,12 @@ proc timeupdate
     add dword[newprocesstime],eax
     cmp dword[newprocesstime],TIME_FOR_NEW_PROCESS
     jb loop_prepare
-        mov dword[newprocesstime],0
-        ; call create new process
-        stdcall newprocess,1,0
+        .if dword[Current_process_count]<Max_processes_count
+            mov dword[newprocesstime],0
+            ; call create new process
+            stdcall newprocess,1,0
+            inc dword[Current_process_count]
+        .endif
     
     loop_prepare:
     pop eax
@@ -45,6 +48,7 @@ proc timeupdate
                     .if word [esi+edi+hung_stage_offset] = 7
                         movzx eax, word [esi+edi+proc_name_offset]
                         stdcall DrawDead, eax
+                        dec dword[Current_process_count]
                         stdcall deleteprocess
                         
                         inc [Reset_count]
@@ -85,7 +89,8 @@ proc timeupdate
                     .else
                         .if word [esi+edi+cpu_hung_stage_offset] = 1
                             add word [esi+edi+cpu_finaltime_offset],ax
-                            .if word [esi+edi+cpu_finaltime_offset] >= TIME_FOR_BEREADY
+                            mov ax, word[esi+edi+cpu_time_for_beready_pffset]
+                            .if word [esi+edi+cpu_finaltime_offset] >= ax
                                 ;stdcall deleteprocess ; another part
                                 mov word[esi+edi+cpu_hung_stage_offset],0
                             .endif
@@ -110,6 +115,7 @@ proc timeupdate
                             .if word [esi+edi+cpu_hung_stage_offset] = 7
                                 movzx eax, word [esi+edi+cpu_proc_name_offset]
                                 stdcall DrawDead, eax
+                                dec dword[Current_process_count]
                                 stdcall deletecpu
                                 inc [Reset_count]
                                 .if [Reset_count] = GAMEOVER

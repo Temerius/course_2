@@ -40,9 +40,12 @@ section '.data' data readable writeable
     Random_probability dw 1
     Random_IOdelimiter dw 5000
     Random_RAMdelimiter dw 4
+    TIME_FOR_BEREADY_delimiter dw 20
     NeedIOCount dd 0
 
     processes dd ? ; address of the process array
+    Max_processes_count = 42
+    Current_process_count dd 0
 
     ; variables for process array offset  
     proc_name_offset = 2
@@ -53,7 +56,8 @@ section '.data' data readable writeable
     need_IO_offset = 12     ; number from 1 to 100 if < Random_probability IO 
     downtime_tick_offset = 14   ; miliseconds from start system (from func gettickcount)
     was_on_CPU_offset = 18  ; flag was process on cpu (to add new cells on ram or not)
-    process_offset = 20     ; final offset (size of cpu structure)
+    time_for_beready_offset = 20
+    process_offset = 22     ; final offset (size of cpu structure)
     ;
 
 
@@ -72,7 +76,8 @@ section '.data' data readable writeable
     cpu_uptime_tick_offset = 16     ; miliseconds from start system (from func gettickcount)   
     cpu_downtime_tick_offset = 20
     cpu_executed_offset = 24    ; flag is process executed
-    CPU_offset = 26
+    cpu_time_for_beready_pffset = 26
+    CPU_offset = 28
 
     RAM dd ?
     RAM_size dd ?
@@ -97,10 +102,10 @@ section '.data' data readable writeable
     myheap dd 0 ; heap from getprocessheap
     
     
-    TIME_FOR_NEW_PROCESS=10000
+    TIME_FOR_NEW_PROCESS=12000
     TIME_FOR_NEXT_STAGE=6000
-    TIME_FOR_BEREADY=12000
-    TIME_FOR_REFRESH=4000
+
+    TIME_FOR_REFRESH=5000
 
     ;FROOOOOOOOOOOOOOOOOOOOONT
 
@@ -134,7 +139,7 @@ section '.data' data readable writeable
     cpu_middle_gap = 15
     middle_process_gap = 15
     
-    proc_foottername_gap = 30
+    proc_foottername_gap = 70
     foottername_footterproc_gap = 5
     dead_dead_gap = 5
     page_page_gap = 5
@@ -151,7 +156,7 @@ section '.data' data readable writeable
 
 
     procsquareY1 = margin_top+header_height+header_cpu_gap+square_size+cpu_middle_gap+header_height+middle_process_gap
-    procsquareY2 = margin_top+header_height+header_cpu_gap+square_size+cpu_middle_gap+header_height+middle_process_gap+square_size*5+cpu_cpu_gap*4
+    procsquareY2 = margin_top+header_height+header_cpu_gap+square_size+cpu_middle_gap+header_height+middle_process_gap+square_size*6+cpu_cpu_gap*5
 
     cpusquareY1 = margin_top+header_height+header_cpu_gap
     cpusquareY2 = margin_top+header_height+header_cpu_gap + square_size

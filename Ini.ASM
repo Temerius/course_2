@@ -36,6 +36,8 @@ proc movproctocpu uses ebx ecx edx, index: dword
     mov word [ebx+cpu_uptime_offset],0
     mov dword [ebx+cpu_uptime_tick_offset],0
     mov word [ebx+cpu_executed_offset],0
+    movzx eax, word[edi+esi+time_for_beready_offset]
+    mov word [ebx+cpu_time_for_beready_pffset], ax
 
 ret
 endp
@@ -73,6 +75,13 @@ proc addprocess uses esi edi edx ebx ecx
     div [Random_RAMdelimiter]
     inc edx
     mov word [esi+edi+cells_count_offset],dx
+
+    mov edx,0
+    rdrand eax
+    div [TIME_FOR_BEREADY_delimiter]
+    inc edx
+    shl edx,10
+    mov word [esi+edi+time_for_beready_offset], dx
     mov word [esi+edi+hung_stage_offset],2
     mov word [esi+edi+downtime_offset],0
     mov word [esi+edi+finaltime_offset],0
@@ -104,11 +113,17 @@ proc movcputoproc uses ebx ecx edx edi esi,name: dword
     mov eax, dword[ebx+cpu_downtime_tick_offset]
     mov dword [esi+edi+downtime_tick_offset],eax
     mov word [esi+edi+was_on_CPU_offset],1
+    movzx eax, word[ebx+cpu_time_for_beready_pffset]
+    mov word [esi+edi+time_for_beready_offset],ax
 ret
 endp
 
 proc initialisation, a: DWORD
     ; process array size
+
+    mov word[DISK_lines_count], raw_count
+    mov dword[Current_process_count],0
+
     mov ax, word [Process_count]
     mov bx, process_offset
     imul ax,bx
@@ -131,6 +146,7 @@ proc initialisation, a: DWORD
     ; filling the array of processes
     ini_loopstart:
         stdcall addprocess
+        inc dword[Current_process_count]
         add edi,process_offset
         cmp edi, dword [Process_size]
         jne ini_loopstart

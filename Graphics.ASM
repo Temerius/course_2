@@ -158,7 +158,7 @@ proc DrawOneProcess uses edi esi ebx edx ecx, procname: dword, x1 : dword, y1: d
     stdcall IntToStr, eax,buffer,0
     stdcall concatinate, PID,space,result_buffer,1
     stdcall concatinate, result_buffer,buffer,result_buffer,0
-    stdcall MyDrawText, [current_color],0x00000000,17,[textx1],[texty1],[textx2],[texty2],result_buffer,DT_CENTER
+    stdcall MyDrawText, [current_color],0x00000000,15,[textx1],[texty1],[textx2],[texty2],result_buffer,DT_CENTER
     invoke  DeleteObject, [hPen]
 
 

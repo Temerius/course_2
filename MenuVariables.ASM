@@ -25,7 +25,7 @@ section '.data' data readable writeable
     Play_width = 120
     Play_height = 80
 
-    SETTINGS dw 4,4,8,12,15,14,14,28,35,42,8,5,6,6,4
+    SETTINGS dw 4,4,8,12,16,14,14,28,35,42,8,5,6,6,4
     Settings_name   db 'EASY',0
                     db 'NORMAL',0
                     db 'HARD', 0
