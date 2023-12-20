@@ -103,7 +103,7 @@ section '.data' data readable writeable
     
     
     TIME_FOR_NEW_PROCESS=10000
-    TIME_FOR_NEXT_STAGE=1000    
+    TIME_FOR_NEXT_STAGE=6000    
     TIME_FOR_REFRESH=5000
 
     ;FROOOOOOOOOOOOOOOOOOOOONT
@@ -119,7 +119,7 @@ section '.data' data readable writeable
 
     text_margin_top = 10
     text_margin_left = 30
-    text_margin_right = 4
+    text_margin_right = 2
     text_margin_bottom = 45
 
     textpage_margin_top = 5
