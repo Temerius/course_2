@@ -60,7 +60,10 @@ proc timeupdate
                         inc [Reset_count]
                         .if [Reset_count] = GAMEOVER
                             ; game over
-                            invoke ExitProcess, 0
+                            ;invoke ExitProcess, 0
+                            mov dword[DRAWFLAG], 4
+                            mov dword[PAUSEFLAG],1
+                            jmp .return
                         .endif
                     .endif                             
                     mov word [esi+edi+downtime_offset],0
@@ -128,7 +131,10 @@ proc timeupdate
                                 inc [Reset_count]
                                 .if [Reset_count] = GAMEOVER
                                     ; game over
-                                    invoke ExitProcess, 0
+                                    mov dword[DRAWFLAG], 4
+                                    mov dword[PAUSEFLAG],1
+                                    jmp .return
+                                    ;invoke ExitProcess, 0
                                 .endif
                             .endif                             
                             mov word [esi+edi+cpu_downtime_offset],0
@@ -141,7 +147,8 @@ proc timeupdate
         .endif
         add edi,CPU_offset
         cmp edi, dword [CPU_size]
-        jne .time_loopstart2    
+        jne .time_loopstart2  
+    .return:  
 ret
 endp
 

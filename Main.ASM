@@ -52,10 +52,10 @@ proc start
     invoke GetDC, [hwnd]
     mov [hDCMain], eax
 
-  invoke CreateCompatibleDC, [hDCMain]  
-  mov [hDCBuf], eax  
-  invoke CreateCompatibleBitmap, [hDCMain], [screen_width], [screen_height] 
-  invoke SelectObject, [hDCBuf], eax
+    invoke CreateCompatibleDC, [hDCMain]  
+    mov [hDCBuf], eax  
+    invoke CreateCompatibleBitmap, [hDCMain], [screen_width], [screen_height] 
+    invoke SelectObject, [hDCBuf], eax
 
 
     ; image
@@ -66,10 +66,6 @@ proc start
     mov dword[myheap], eax
     
     stdcall LoadAllImages
-    ;stdcall DrawBackColor
-    ;stdcall DrawImage,dword[menu_descriptor],0,0,dword[screen_width], dword[screen_height] 
-
-    ;stdcall initialisation,[myheap]
 
     msg_loop:
         invoke GetMessage, msg, NULL, 0, 0
@@ -165,37 +161,7 @@ proc DrawBackColor uses esi edi ebx ecx edx
 ret
 endp
 
-proc DrawAnima uses esi edi ecx ebx edx
-    invoke GetTickCount
-    mov ecx,eax
-    mov ebx, dword[Time_for_new_anima]
-    .if ebx <> 0
-        push ecx
-        sub ecx,ebx
-        .if ecx >= 400
-            mov edi, Anima
-            mov esi, dword[Current_anima_offset]
-            stdcall DrawImage,dword[edi+esi],0,0,dword[screen_width], dword[screen_height] 
-            add esi,4
-            .if esi >= 40
-                mov esi,0
-                
-            .endif
-            ;invoke Sleep, 400
-            mov dword[Current_anima_offset],esi
-            mov dword[Time_for_new_anima],0
-        .endif
-        pop ecx
-    .else
-        mov dword[Time_for_new_anima],ecx
-    .endif
-    
-        
-        
-        
 
-ret
-endp
 proc MainProc uses esi edi ebx edx ecx eax
         pusha
         stdcall drawCPU
@@ -280,6 +246,7 @@ proc WindowProc uses ebx, hWnd, uMsg, wParam, lParam
         case    1,     .MenuPaint
         case    2,     .MainPaint
         case    3,     .PausePaint
+        case    4,     .EndPaint
 
         .MenuPaint:
             stdcall DrawAnima
@@ -293,7 +260,10 @@ proc WindowProc uses ebx, hWnd, uMsg, wParam, lParam
         .PausePaint:
             stdcall DrawPause
         jmp .end1
-            
+
+        .EndPaint:
+            stdcall DrawEnd
+        jmp .end1
 
         .end1:
     jmp     .ReturnZero
@@ -302,8 +272,18 @@ proc WindowProc uses ebx, hWnd, uMsg, wParam, lParam
             switch [wParam]
             case VK_ESCAPE, .onDestroy
             case VK_SPACE, .onSpace
+            case VK_TAB,  .onTab
     jmp     .ReturnZero
 
+
+    .onTab:
+        .if dword[DRAWFLAG] = 4
+            mov dword[DRAWFLAG],1
+            mov dword[PAUSEFLAG],0
+            stdcall SetDefault
+            stdcall DrawBackColor
+        .endif
+        jmp .end2
     .onSpace:
         .if dword[DRAWFLAG] = 2
             .if dword[PAUSEFLAG] = 0
@@ -313,6 +293,7 @@ proc WindowProc uses ebx, hWnd, uMsg, wParam, lParam
                 mov dword[PAUSEFLAG],0
             .endif
         .endif
+        
         jmp .end2
     .onLClick0:
         mov eax, [lParam]
@@ -325,6 +306,7 @@ proc WindowProc uses ebx, hWnd, uMsg, wParam, lParam
         case    1,     .MenuClick
         case    2,     .MainClick
         case    3,     .PauseClick
+        case    4,     .EndClick
         jmp .end2
 
         .MenuClick:
@@ -340,6 +322,11 @@ proc WindowProc uses ebx, hWnd, uMsg, wParam, lParam
         .PauseClick:
             stdcall PauseClick
         jmp .end2
+
+        .EndClick:
+            ;stdcall PauseClick
+        jmp .end2
+
 
         .end2:
     jmp     .ReturnZero
@@ -361,6 +348,16 @@ proc WindowProc uses ebx, hWnd, uMsg, wParam, lParam
                 .if dword[DRAWFLAG]=1
                     invoke  ExitProcess, 0
                 .endif
+            .endif
+            .if dword[DRAWFLAG] = 4
+                mov dword[DRAWFLAG],2
+                mov dword[PAUSEFLAG],0
+                stdcall SetDefault
+                invoke GetTickCount
+                mov dword[timer],eax
+                
+                stdcall initialisation,[myheap]
+                stdcall DrawBackColor
             .endif
         .endif
     .ReturnZero:
@@ -597,3 +594,5 @@ section '.idata' import data readable writeable
   include 'Menu.ASM'
   include 'PauseVariables.ASM'
   include 'Pause.ASM'
+  include 'EndVariables.ASM'
+  include 'End.ASM'

@@ -48,6 +48,16 @@ proc DrawMainMenu uses edi esi ecx edx ebx
     invoke  DeleteObject, [hPen]
     invoke  DeleteObject, [tmppen]
 
+    stdcall DrawSettingName
+
+    stdcall MyDrawText, 0x00000000,0x00FFFFFF,40,Squares_x+Squares_width, Squares_y,Squares_x+Squares_width+TextDifficulty_width,Squares_y+Squares_height,buffer,DT_SINGLELINE+DT_CENTER+DT_VCENTER
+ 
+    stdcall MyDrawText, 0x00000000,0x00FFFFFF,40,Play_x,Play_y,Play_x+Play_width,Play_y+Play_height,Play,DT_SINGLELINE+DT_CENTER+DT_VCENTER
+    
+ret
+endp
+
+proc DrawSettingName uses ecx ebx edx esi edi
     mov esi, Settings_name
     mov edx,0
     stdcall strclean, buffer
@@ -66,13 +76,36 @@ proc DrawMainMenu uses edi esi ecx edx ebx
         .endif
     .endloop:
 
-    stdcall MyDrawText, 0x00000000,0x00FFFFFF,40,Squares_x+Squares_width, Squares_y,Squares_x+Squares_width+TextDifficulty_width,Squares_y+Squares_height,buffer,DT_SINGLELINE+DT_CENTER+DT_VCENTER
- 
-    stdcall MyDrawText, 0x00000000,0x00FFFFFF,40,Play_x,Play_y,Play_x+Play_width,Play_y+Play_height,Play,DT_SINGLELINE+DT_CENTER+DT_VCENTER
-    
 ret
 endp
 
+proc DrawAnima uses esi edi ecx ebx edx
+    invoke GetTickCount
+    mov ecx,eax
+    mov ebx, dword[Time_for_new_anima]
+    .if ebx <> 0
+        push ecx
+        sub ecx,ebx
+        .if ecx >= 400
+            mov edi, Anima
+            mov esi, dword[Current_anima_offset]
+            stdcall DrawImage,dword[edi+esi],0,0,dword[screen_width], dword[screen_height] 
+            add esi,4
+            .if esi >= 40
+                mov esi,0
+                
+            .endif
+            ;invoke Sleep, 400
+            mov dword[Current_anima_offset],esi
+            mov dword[Time_for_new_anima],0
+        .endif
+        pop ecx
+    .else
+        mov dword[Time_for_new_anima],ecx
+    .endif
+
+ret
+endp
 proc MenuClick uses ebx edx ecx esi edi
     mov edi, dword[mouseX]
     mov esi, dword[mouseY]

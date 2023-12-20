@@ -103,7 +103,7 @@ section '.data' data readable writeable
     
     
     TIME_FOR_NEW_PROCESS=10000
-    TIME_FOR_NEXT_STAGE=6000    
+    TIME_FOR_NEXT_STAGE=1000    
     TIME_FOR_REFRESH=5000
 
     ;FROOOOOOOOOOOOOOOOOOOOONT

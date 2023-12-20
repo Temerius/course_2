@@ -15,7 +15,16 @@ proc DrawHeader
     stdcall concatinate, result_buffer,IOEVENTSEND,result_buffer,0
     stdcall MyDrawText, 0x00969817,0x00000000,20,margin_left, margin_top,margin_left+square_size*2+cpu_cpu_gap,margin_top+header_height,result_buffer,DT_SINGLELINE+DT_CENTER+DT_VCENTER
 
+    stdcall DrawTime
+    stdcall MyDrawText,0x00000000, 0x00FFFFFF,20, margin_left, margin_top,left_header_width,margin_top+header_height ,result_buffer,DT_RIGHT+DT_SINGLELINE+DT_VCENTER
+    stdcall strclean, buffer
+    stdcall DrawScore
+    stdcall MyDrawText, 0x00000000,0x00FFFFFF,20,left_header_width, margin_top,header_width,margin_top+header_height,result_buffer,DT_SINGLELINE+DT_CENTER+DT_VCENTER
+    stdcall strclean, buffer
+ret
+endp
 
+proc DrawTime uses ebx ecx edx esi edi
     stdcall concatinate, UPTIME,space,result_buffer,1
     stdcall concatinate, result_buffer,COLOMN,result_buffer,0
     stdcall concatinate, result_buffer,space,result_buffer,0
@@ -44,9 +53,13 @@ proc DrawHeader
     mov eax, dword[seconds]
     stdcall IntToStr, eax,buffer,0
     stdcall concatinate, result_buffer,buffer,result_buffer,0
-    stdcall MyDrawText, 0x00000000,0x00FFFFFF,20,margin_left, margin_top,left_header_width,margin_top+header_height,result_buffer,DT_RIGHT+DT_SINGLELINE+DT_VCENTER
-    stdcall strclean, result_buffer
+    
 
+ret
+endp
+
+
+proc DrawScore uses ebx ecx edx esi edi
     stdcall concatinate, SCORE,space,result_buffer,1
     stdcall concatinate, result_buffer,COLOMN,result_buffer,0
     stdcall concatinate, result_buffer,space,result_buffer,0
@@ -54,12 +67,10 @@ proc DrawHeader
     mov eax, dword[score]
     stdcall IntToStr, eax,buffer,0
     stdcall concatinate, result_buffer,buffer,result_buffer,0
-    stdcall MyDrawText, 0x00000000,0x00FFFFFF,20,left_header_width, margin_top,header_width,margin_top+header_height,result_buffer,DT_SINGLELINE+DT_CENTER+DT_VCENTER
-    stdcall strclean, result_buffer
-    
+
+
 ret
 endp
-
 proc drawCPU
 
     local x1 dd margin_left
