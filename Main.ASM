@@ -153,6 +153,7 @@ endp
 
 
 proc SetDefault uses ebx ecx edx esi edi
+    
     invoke HeapFree, [myheap], 0, processes
     mov word[current_name],0
     mov dword[Reset_count],0
@@ -165,6 +166,7 @@ proc SetDefault uses ebx ecx edx esi edi
     mov dword[PAGEQIUTS_X2], margin_left+square_size
     mov dword[PAGEQIUTS_Y2], margin_top+header_height+header_cpu_gap+square_size+cpu_middle_gap+header_height+middle_process_gap+square_size*5+cpu_cpu_gap*4+proc_foottername_gap+header_height+foottername_footterproc_gap+square_size
     mov dword[DISKY1], margin_top+header_height+header_cpu_gap+square_size+cpu_middle_gap+header_height+middle_process_gap
+    mov word[DISK_lines_count], raw_count
 ret
 endp
 proc WindowProc uses ebx, hWnd, uMsg, wParam, lParam

@@ -116,7 +116,6 @@ endp
 
 
 proc SetSettings uses ebx ecx edx esi edi
-    mov word[DISK_lines_count], raw_count
     mov esi, SETTINGS
     movzx edi, word[Setting_name_index]
     add esi, edi
