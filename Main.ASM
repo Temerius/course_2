@@ -1,6 +1,5 @@
 
 ; TODO
-;   Change image load
 ;  100 process +
 ; dead process 700
 
@@ -66,7 +65,9 @@ proc start
     invoke GetProcessHeap
     mov dword[myheap], eax
     
-    stdcall DrawBackColor
+    stdcall LoadAllImages
+    ;stdcall DrawBackColor
+    ;stdcall DrawImage,dword[menu_descriptor],0,0,dword[screen_width], dword[screen_height] 
 
     ;stdcall initialisation,[myheap]
 
@@ -97,6 +98,59 @@ proc start
     ret
 endp
 
+proc LoadAllImages uses esi edi ebx ecx edx
+
+    invoke LoadImage, [hDCBuf], pausepicture, IMAGE_BITMAP, 0, 0,LR_DEFAULTCOLOR+LR_DEFAULTSIZE+LR_LOADFROMFILE
+    mov dword[pause_descriptor], eax
+
+    invoke LoadImage, [hDCBuf], endpicture, IMAGE_BITMAP, 0, 0,LR_DEFAULTCOLOR+LR_DEFAULTSIZE+LR_LOADFROMFILE
+    mov dword[end_descriptor], eax
+
+    mov edi, Smilesarray
+    mov esi, 0
+    mov ecx, 0
+    
+   .startloop1:
+        push ecx
+        stdcall IntToStr, ecx,emoji0,9
+        invoke LoadImage, [hDCBuf], emoji0, IMAGE_BITMAP, 0, 0,LR_DEFAULTCOLOR+LR_DEFAULTSIZE+LR_LOADFROMFILE
+        mov dword[edi+esi],eax
+        add esi,4
+        pop ecx
+        inc ecx
+        cmp esi, 32
+        jb .startloop1
+
+    mov edi, Hourglassesarray
+    mov esi, 0
+    mov ecx, 0
+    .startloop2:
+        push ecx
+        stdcall IntToStr, ecx,emoji8,21
+        invoke LoadImage, [hDCBuf], emoji8, IMAGE_BITMAP, 0, 0,LR_DEFAULTCOLOR+LR_DEFAULTSIZE+LR_LOADFROMFILE
+        mov dword[edi+esi],eax
+        add esi,4
+        pop ecx
+        inc ecx
+        cmp esi, 28
+        jb .startloop2
+
+    mov edi, Anima
+    mov esi, 0
+    mov ecx, 0
+
+    .startloop3:
+        push ecx
+        stdcall IntToStr, ecx,menupicture,15
+        invoke LoadImage, [hDCBuf], menupicture, IMAGE_BITMAP, 0, 0,LR_DEFAULTCOLOR+LR_DEFAULTSIZE+LR_LOADFROMFILE
+        mov dword[edi+esi],eax
+        add esi,4
+        pop ecx
+        inc ecx
+        cmp esi, 40
+        jb .startloop3
+ret
+endp
 proc DrawBackColor uses esi edi ebx ecx edx
     invoke CreatePen, PS_SOLID, 2,0x00000000
     mov [hPen], eax
@@ -107,6 +161,38 @@ proc DrawBackColor uses esi edi ebx ecx edx
     invoke Rectangle, [hDCBuf], 0,0,dword[screen_width],dword[screen_height] 
     invoke  DeleteObject, [hBrush]
     invoke  DeleteObject, [hPen]
+
+ret
+endp
+
+proc DrawAnima uses esi edi ecx ebx edx
+    invoke GetTickCount
+    mov ecx,eax
+    mov ebx, dword[Time_for_new_anima]
+    .if ebx <> 0
+        push ecx
+        sub ecx,ebx
+        .if ecx >= 400
+            mov edi, Anima
+            mov esi, dword[Current_anima_offset]
+            stdcall DrawImage,dword[edi+esi],0,0,dword[screen_width], dword[screen_height] 
+            add esi,4
+            .if esi >= 40
+                mov esi,0
+                
+            .endif
+            ;invoke Sleep, 400
+            mov dword[Current_anima_offset],esi
+            mov dword[Time_for_new_anima],0
+        .endif
+        pop ecx
+    .else
+        mov dword[Time_for_new_anima],ecx
+    .endif
+    
+        
+        
+        
 
 ret
 endp
@@ -160,6 +246,7 @@ proc SetDefault uses ebx ecx edx esi edi
     mov dword[minutes],0
     mov dword[hours],0
     mov dword[score],0
+    mov dword[newprocesstime],0
     mov dword[PAGEQIUTS_X1], margin_left
     mov dword[PAGEQIUTS_Y1], margin_top+header_height+header_cpu_gap+square_size+cpu_middle_gap+header_height+middle_process_gap+square_size*5+cpu_cpu_gap*4+proc_foottername_gap+header_height+foottername_footterproc_gap
     mov dword[PAGEQIUTS_X2], margin_left+square_size
@@ -195,6 +282,7 @@ proc WindowProc uses ebx, hWnd, uMsg, wParam, lParam
         case    3,     .PausePaint
 
         .MenuPaint:
+            stdcall DrawAnima
             stdcall DrawMainMenu
         jmp .end1
         
@@ -267,7 +355,8 @@ proc WindowProc uses ebx, hWnd, uMsg, wParam, lParam
                 mov dword[PAUSEFLAG], 0
                 mov dword[DRAWFLAG],2
                 stdcall UpdateAllTime
-                stdcall FulRect, 0x00000000, 0x00000000,Square_x,Square1_y, Square_x+Square_width+5,Square1_y+Square_height*3+5
+                ;stdcall DrawBackColor
+                stdcall FulRect, 0x00000000, 0x00000000,0,0, 1700,700
             .else
                 .if dword[DRAWFLAG]=1
                     invoke  ExitProcess, 0

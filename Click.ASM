@@ -103,6 +103,7 @@ proc FindClickInCPU uses ebx ecx edx esi edi
             .else
                 movzx edx, word[esi+edi+cpu_proc_name_offset]
                 dec dword[Current_process_count]
+                add dword[score],3000
                 stdcall deletecells , edx
                 mov word[esi+edi+cpu_proc_name_offset], -1
             .endif
@@ -237,29 +238,33 @@ ret
 endp
 
 proc DeleteIO uses ecx edx ebx esi edi 
-    mov dword[NeedIOCount], 0
-    mov esi, dword[processes]
-    mov edi,0
-    
-    .loopstart:
-        .if word[esi+edi+need_IO_offset] = 1
-            mov word[esi+edi+need_IO_offset],0
-        .endif
+    .if dword[NeedIOCount] > 0
+        mov esi, dword[processes]
+        mov edi,0
+        
 
-        add edi, process_offset
-        cmp edi, dword[Process_size]
-        jb .loopstart
+        .loopstart:
+            .if word[esi+edi+need_IO_offset] = 1
+                mov word[esi+edi+need_IO_offset],0
+            .endif
 
-    mov esi, dword[CPU]
-    mov edi,0
-    
-    .loopstart2:
-        .if word[esi+edi+cpu_need_IO_offset] = 1
-            mov word[esi+edi+cpu_need_IO_offset],0
-        .endif
+            add edi, process_offset
+            cmp edi, dword[Process_size]
+            jb .loopstart
 
-        add edi, CPU_offset
-        cmp edi, dword[CPU_size]
-        jb .loopstart2
+        mov esi, dword[CPU]
+        mov edi,0
+        
+        .loopstart2:
+            .if word[esi+edi+cpu_need_IO_offset] = 1
+                mov word[esi+edi+cpu_need_IO_offset],0
+            .endif
+
+            add edi, CPU_offset
+            cmp edi, dword[CPU_size]
+            jb .loopstart2
+        mov dword[NeedIOCount], 0
+        add dword[score], 1000
+    .endif
 ret
 endp

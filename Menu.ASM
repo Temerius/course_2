@@ -102,6 +102,7 @@ proc MenuClick uses ebx edx ecx esi edi
         stdcall SetSettings
         stdcall initialisation,[myheap]
         stdcall DrawBackColor
+        
         jmp .return
     .endif
     

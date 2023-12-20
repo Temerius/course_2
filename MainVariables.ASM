@@ -40,7 +40,7 @@ section '.data' data readable writeable
     Random_probability dw 1
     Random_IOdelimiter dw 5000
     Random_RAMdelimiter dw 4
-    TIME_FOR_BEREADY_delimiter dw 20
+    TIME_FOR_BEREADY_delimiter dw 25
     NeedIOCount dd 0
 
     processes dd ? ; address of the process array
@@ -102,9 +102,8 @@ section '.data' data readable writeable
     myheap dd 0 ; heap from getprocessheap
     
     
-    TIME_FOR_NEW_PROCESS=12000
-    TIME_FOR_NEXT_STAGE=6000
-
+    TIME_FOR_NEW_PROCESS=10000
+    TIME_FOR_NEXT_STAGE=6000    
     TIME_FOR_REFRESH=5000
 
     ;FROOOOOOOOOOOOOOOOOOOOONT
@@ -112,6 +111,7 @@ section '.data' data readable writeable
     Colorarray dd 0x00fff046,0x0000ff00,0x0000FFFF,0x00008aFF,0x000808FF,0x000000A6,0x00250a41
     Smilesarray dd 0,0,0,0,0,0,0,0
     Hourglassesarray dd 0,0,0,0,0,0,0
+    Anima dd 0,0,0,0,0,0,0,0,0,0
     margin_top = 20
     margin_left = 30
     margin_right = 30
@@ -190,16 +190,18 @@ section '.data' data readable writeable
 
     DISKY1 dd margin_top+header_height+header_cpu_gap+square_size+cpu_middle_gap+header_height+middle_process_gap
     
+    Current_anima_offset dd 0
+    Time_for_new_anima dd 400
     ;Gemoji db 'D:\BSUIR\ASSembly\course_2\images\cold_face_emoji.bmp', 0
-    emoji0 db './images/smiling_face_with_halo_emoji.bmp', 0
-    emoji1 db './images/grinning_face_emoji.bmp', 0
-    emoji2 db './images/slightly_smiling_face_emoji.bmp', 0
-    emoji3 db './images/neutral_face_emoji.bmp', 0
-    emoji4 db './images/frowning_face_emoji.bmp', 0
-    emoji5 db './images/loudly_crying_face_emoji.bmp', 0
-    emoji6 db './images/cold_face_emoji.bmp', 0
-    emoji7 db './images/skull_emoji.bmp', 0
+    emoji0 db './images/0.bmp', 0
+
+    menupicture db './images/anima/0.bmp',0
+
+
+    pausepicture db './images/pause.bmp',0
+    pause_descriptor dd 0
+
+    endpicture db './images/end.bmp',0
+    end_descriptor dd 0
 
     emoji8 db './images/hourglasses/0.bmp', 0
-    hg db './images/hourglasses/', 0
-    bmp db '.bmp',0

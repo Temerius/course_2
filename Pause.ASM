@@ -1,4 +1,7 @@
 proc DrawPause uses ebx ecx edx esi edi
+
+    stdcall DrawImage,dword[pause_descriptor],450,125,dword[screen_width], dword[screen_height] 
+    
     invoke CreateSolidBrush, 0x00000000
     mov [hBrush], eax
     invoke CreatePen, PS_SOLID, 3,0x00FFFFFF
@@ -55,7 +58,8 @@ proc PauseClick uses ebx edx ecx esi edi
         mov dword[DRAWFLAG],2
         mov dword[PAUSEFLAG],0
         stdcall UpdateAllTime
-        stdcall FulRect, 0x00000000, 0x00000000,Square_x,Square1_y, Square_x+Square_width+5,Square1_y+Square_height*3+5
+        ;stdcall FulRect, 0x00000000, 0x00000000,Square_x,Square1_y, Square_x+Square_width+5,Square1_y+Square_height*3+5
+        stdcall FulRect, 0x00000000, 0x00000000,0,0, 1700,700
         jmp .return
     .endif
     

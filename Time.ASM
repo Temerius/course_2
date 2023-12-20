@@ -5,9 +5,15 @@ proc timeupdate
     mov dword [newtimetick],eax
     sub eax, dword [timer]
     add dword[time], eax
+        
+        mov eax, dword[time]
+        shr eax,10
+        inc eax
+        add dword[score],eax
+
     .if [time] > 1000
         inc dword[seconds]
-        inc dword[score]
+        
         mov [time],0
         .if dword[seconds] = 60
             inc dword[minutes]
@@ -85,6 +91,7 @@ proc timeupdate
                         .if word [esi+edi+cpu_uptime_offset] >= TIME_FOR_REFRESH
                             mov word [esi+edi+cpu_hung_stage_offset],1
                             mov word [esi+edi+cpu_uptime_offset],0
+                            add dword[score],1000
                         .endif
                     .else
                         .if word [esi+edi+cpu_hung_stage_offset] = 1
@@ -93,6 +100,7 @@ proc timeupdate
                             .if word [esi+edi+cpu_finaltime_offset] >= ax
                                 ;stdcall deleteprocess ; another part
                                 mov word[esi+edi+cpu_hung_stage_offset],0
+
                             .endif
                         .endif
                     .endif

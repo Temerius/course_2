@@ -4,23 +4,23 @@ section '.data' data readable writeable
     Play db 'PLAY',0
     
 
-    Name_x = 650
-    Name_y = 250
+    Name_x = 650 - 30
+    Name_y = 250 - 52
     Name_width = 200
     Name_height = 50
-    Name_Difficulty_gap = 50
-    Difficulty_x = 600
-    Difficulty_y = Name_y+Name_height+Name_Difficulty_gap
+    Name_Difficulty_gap = 50 + 52
+    Difficulty_x = 600 - 22
+    Difficulty_y = Name_y+Name_height+Name_Difficulty_gap - 52
     Difficulty_height = 50
     Difficulty_width = 300
     Difficulty_squares_gap = 30
-    Squares_x = 600
+    Squares_x = 600 - 22
     Squares_y = Difficulty_y+Difficulty_height+Difficulty_squares_gap
     TextDifficulty_width = 200
     Squares_height = 60
     Squares_width = 40
     Squares_Play_gap = 30
-    Play_x = 680
+    Play_x = 680 -22
     Play_y = Squares_y + Squares_Play_gap + Squares_height
     Play_width = 120
     Play_height = 80

@@ -113,6 +113,7 @@ proc DrawOneProcess uses edi esi ebx edx ecx, procname: dword, x1 : dword, y1: d
     local textx2 dd ?
     local texty1 dd ?
     local texty2 dd ?
+    local font_size dd ?
     .if [comparator] = 1
         ;mov esi, dword[processes]
         ;stdcall GetEdi, [procname],process_offset
@@ -158,7 +159,21 @@ proc DrawOneProcess uses edi esi ebx edx ecx, procname: dword, x1 : dword, y1: d
     stdcall IntToStr, eax,buffer,0
     stdcall concatinate, PID,space,result_buffer,1
     stdcall concatinate, result_buffer,buffer,result_buffer,0
-    stdcall MyDrawText, [current_color],0x00000000,15,[textx1],[texty1],[textx2],[texty2],result_buffer,DT_CENTER
+    .if [comparator] = 1
+        .if word[esi+edi+proc_name_offset] < 100
+            mov dword[font_size],17
+        .else
+            mov dword[font_size],14
+        .endif
+    .else
+        .if word[esi+edi+cpu_proc_name_offset] < 100
+            mov dword[font_size],17
+        .else
+            mov dword[font_size],14
+        .endif
+    .endif
+    stdcall MyDrawText, [current_color],0x00000000,[font_size],[textx1],[texty1],[textx2],[texty2],result_buffer,DT_CENTER
+
     invoke  DeleteObject, [hPen]
 
 
